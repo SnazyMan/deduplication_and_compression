@@ -1,13 +1,15 @@
 #include "sha256.h"
+#include "ContentDefinedChunk.h"
 #include <string.h>
 #include <stdio.h>
 
-#define SHA_TEST 1
+#define SHA_TEST 0
+#define ChunkDefine_TEST 1
 
 int main()
 {
 	int ret = 0;
-	
+
 #ifdef SHA_TEST
 	int pass = 1;
 	unsigned char hash1[SHA256_BLOCK_SIZE] = {
@@ -22,5 +24,24 @@ int main()
 	pass = pass && !memcmp(hash1, digest_out, SHA256_BLOCK_SIZE);
 	printf("SHA-256 tests: %s\n", pass ? "SUCCEEDED" : "FAILED");		
 #endif	
+
+#ifdef ChunkDefine_TEST
+    int InputLength = 300000;
+    FILE * testfile;
+    testfile = fopen("/Users/koutsutomushiba/Desktop/chunktest/testfile.xml","r");
+    FILE * ChunkLengthtest;
+    unsigned char Input[InputLength];
+    fread(Input,sizeof(unsigned char),InputLength,testfile);
+    int chunklength[1000];
+    ChunkLengthtest = fopen("/Users/koutsutomushiba/Desktop/chunktest/ChunkLength.xml","wt");
+    ContentDefinedChunk(Input,chunklength);
+    /*
+    for(int i=0;i<100;i++){
+        fprintf(ChunkLengthtest,"%d\n",chunklength[i]);
+        printf("%d\n", chunklength[i]);
+    }
+     */
+#endif
 	return ret;
+
 }

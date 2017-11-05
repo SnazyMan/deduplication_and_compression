@@ -8,7 +8,7 @@
 #include <math.h>
 #define WindowSize (16)
 #define FingerprintBits (64)
-#define PRIME (2)
+#define PRIME (23)
 #define InputLength (10000)
 void ContentDefinedChunk(const unsigned char * Input, int * ChunkLength)
 {
