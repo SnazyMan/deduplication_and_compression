@@ -1,4 +1,6 @@
+#include "ContentDefinedChunk.h"
 #include "sha256.h"
+#include "lzw.h"
 #include <string.h>
 #include <stdio.h>
 
