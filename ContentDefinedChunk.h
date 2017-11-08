@@ -9,6 +9,6 @@
 #ifndef ContentDefinedChunk_h
 #define ContentDefinedChunk_h
 
-void ContentDefinedChunk(const unsigned char * Input, int * ChunkLength);
+void ContentDefinedChunk(const unsigned char * Input, int * ChunkLength, int *ChunkNumber);
 
 #endif /* ContentDefinedChunk_h */
