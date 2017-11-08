@@ -1,9 +1,9 @@
 CC=gcc
 CFLAGS=-I.
-OBJ = dedup_main.o sha256.o ContentDefinedChunk.o lzw.o
+OBJ = dedup_main.o sha256.o ContentDefinedChunk.o lzw.o io.o
 
 %.o: %.c
-	$(CC) -c -g -o $@ $< $(CFLAGS)
+	$(CC) -c -g -Wall -Wextra -o $@ $< $(CFLAGS)
 
 dedup: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)

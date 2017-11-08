@@ -15,11 +15,11 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length)
 	int ret;
 	int index = 0; //index incoming chunk
 	int i = -1; // index dict_root list
-	int prefix;
-	unsigned int code; // code for current string 
+	int prefix; // code for current string
 	unsigned char current_code_len; // length of the current code 
 	unsigned int next_code; // next available code index 
-	unsigned char c; // character to add to string 
+	unsigned char c; // character to add to string
+	int last = 0; //false
 
 	// validate arguments 
 	if ((in_chunk == 0) || (out_chunk == 0) || (chunk_length == 0)) {
@@ -60,20 +60,18 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length)
 			// add to dict_root
 			dictionary_add(prefix, c, next_code++);
 
-
-			if (prefix >= CURRENT_MAX_CODES(current_code_len)) {
-				currentCodeLen++;
-			}
-
+			if (prefix >= CURRENT_MAX_CODES(current_code_len)) 
+				current_code_len++;
+			
 			//encode to output stream
-			write_code_word(out_chunk, prefix, current_code_len);
+			write_code_word(out_chunk, prefix, current_code_len, last);
 
 			prefix = c;
 		}
 	}
 	
 	// no more input.  write out last of the code
-	write_code_word(out_chunk, code, current_code_len);
+	write_code_word(out_chunk, prefix, current_code_len, last = 1);
 	
 	// free the dict_root
 	//free_tree(dict_root);
@@ -140,10 +138,68 @@ void dictionary_add(int prefix, unsigned char character, int value)
  * The next code word will be packed into the stream changing the second byte to:
  * x8,x7,x6,x5,x4,x3,x2,x1 and x0,y8,y7,y6,y5,y4,y3,y2 and so it on
  */
-int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len)
+int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last)
 {
-	static int out_index = 0;
-	out_stream[out_index++] = code;
+	// We start at 4 to give room for 32b header for each chunk
+	static int out_index = 4;
+	static unsigned char leftover = 0;
+	static int n_leftover = 0;
+	unsigned char tmp = 0;
+
+	/*
+	 * If there is no leftover bits, write 8 or 16 most significant bits to stream
+	 * save the leftover bits in leftover to go out on next iteration
+	 */
+	if (n_leftover == 0) {
+		n_leftover = code_len % CHAR_BITS;
+		leftover = code << (CHAR_BITS - n_leftover);
+		if (code_len == 16) {
+			out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
+		}
+		out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
+	}
+	else {
+		// Move leftover bits to most significant pos in tmp
+		// place code_len - n_leftover bits into stream with
+		// leftover bits occupying MSB following MSB of code
+		tmp = code >> (code_len - (CHAR_BITS - n_leftover));
+		tmp |= leftover;
+		out_stream[out_index++] = tmp;
+		n_leftover = (code_len - (CHAR_BITS - n_leftover));
+		if (n_leftover == 8) {
+			leftover = code << (CHAR_BITS - n_leftover);
+ 			out_stream[out_index++] = leftover;
+			n_leftover = 0;
+			leftover = 0;
+		}
+		else if (n_leftover > 8) {
+			out_stream[out_index++] = code >> (n_leftover - CHAR_BITS);
+			n_leftover = (n_leftover - CHAR_BITS);
+			leftover = code << (CHAR_BITS - n_leftover);
+		}
+		else {
+			leftover = code << (CHAR_BITS - n_leftover);
+		}
+	}
+
+	// write out any leftover bits, pad chunk, add header
+	if (last) {
+		if (n_leftover) {
+			// Padding is aready taken care of I think
+			out_stream[out_index++] = leftover;
+		}
+
+		// move from bit position 0-32 to 1-32
+		out_index <<= 1;
+		// zero out bottom bit
+		out_index &= 0xFFFFFFFE;
+		//partition into 4 bytes
+		out_stream[0] = (unsigned char)(out_index & 0x000000FF);
+		out_stream[1] = (unsigned char)((out_index & 0x0000FF00) >> 8);
+		out_stream[2] = (unsigned char)((out_index & 0x00FF0000) >> 16);
+		out_stream[3] = (unsigned char)((out_index & 0xFF000000) >> 24);
+	}
 	
+	// Are there failure conditions?
 	return 0;
 }

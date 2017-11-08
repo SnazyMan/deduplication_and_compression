@@ -9,7 +9,8 @@
 
 #define MIN_CODE_LEN    9                   // min # bits in a code word
 #define MAX_CODE_LEN    20                  // max # bits in a code word 
-#define MAX_DICT_SIZE
+#define MAX_DICT_SIZE   4095
+#define CHAR_BITS       8
 
 #define FIRST_CODE      0                   // value of 1st string code 
 #define MAX_CODES       (1 << MAX_CODE_LEN)
@@ -26,7 +27,7 @@ struct dict_node {
 };
 
 // write encoded data
-int write_code_word(unsigned char *out_chunk, int code, const unsigned char code_len);
+int write_code_word(unsigned char *out_chunk, int code, const unsigned char code_len, int last);
 
 // LZW encoder
 int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length);
@@ -42,3 +43,5 @@ int dictionary_lookup(int prefix, unsigned char character);
 
 // add new dictionary entry
 void dictionary_add(int prefix, unsigned char character, int value);
+
+// Cleanup method. Memory leakkiinnn
