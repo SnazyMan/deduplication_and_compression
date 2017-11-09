@@ -8,7 +8,7 @@
  */
 
 #define MIN_CODE_LEN    9                   // min # bits in a code word
-#define MAX_CODE_LEN    20                  // max # bits in a code word 
+#define MAX_CODE_LEN    20                  // max # bits in a code word
 #define MAX_DICT_SIZE   4095
 #define CHAR_BITS       8
 
@@ -27,7 +27,7 @@ struct dict_node {
 };
 
 // write encoded data
-int write_code_word(int * out_index, unsigned char *leftover, int * n_leftover,unsigned char *out_chunk, int code, const unsigned char code_len, int last, int *compressed_length);
+int write_code_word(unsigned char *out_chunk, int code, const unsigned char code_len, int last, int *compressed_length);
 
 // LZW encoder
 int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length,int * compressed_chunk_lenghth);
