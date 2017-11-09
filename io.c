@@ -3,7 +3,7 @@
 
 int load_data(unsigned char *data)
 {
-	unsigned int size = 46;
+	unsigned int size = 300000;
 	
 #ifdef __SDSCC__
 	FIL file;

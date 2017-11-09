@@ -10,7 +10,7 @@
 #define WindowSize (16)
 #define FingerprintBits (64)
 #define PRIME (23)
-#define InputLength (10000)
+#define InputLength (1000)
 void ContentDefinedChunk(const unsigned char * Input, int * ChunkLength, int *ChunkNumber)
 {
     long Modulus = (long)pow(2,64);
@@ -24,10 +24,10 @@ void ContentDefinedChunk(const unsigned char * Input, int * ChunkLength, int *Ch
         long lowerbits = rollhash & ((long)pow(2,12)-1);
         if(chunklength == 8192 || lowerbits == 0 || i == InputLength-WindowSize-1){
             ChunkLength[j]=chunklength;
+            //printf("%d\n",ChunkLength[j]);
             j++;
             chunklength=0;
         }
     }
-    *ChunkLength = j;
     
 }
