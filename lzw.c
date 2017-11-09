@@ -10,7 +10,7 @@ struct dict_node *tail;
  * LZW encoding, takes a pointer to input chunk location and outputs 
  * a pointer to the encoded chunk
  */
-int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length)
+int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int * compressed_chunk_lenghth)
 {
 	int ret;
 	int index = 0; //index incoming chunk
@@ -64,14 +64,14 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length)
 				current_code_len++;
 			
 			//encode to output stream
-			write_code_word(out_chunk, prefix, current_code_len, last);
+			write_code_word(out_chunk, prefix, current_code_len, last, &compressed_chunk_lenghth);
 
 			prefix = c;
 		}
 	}
 	
 	// no more input.  write out last of the code
-	write_code_word(out_chunk, prefix, current_code_len, last = 1);
+	write_code_word(out_chunk, prefix, current_code_len, last = 1,&compressed_chunk_lenghth);
 	
 	// free the dict_root
 	//free_tree(dict_root);
@@ -138,7 +138,7 @@ void dictionary_add(int prefix, unsigned char character, int value)
  * The next code word will be packed into the stream changing the second byte to:
  * x8,x7,x6,x5,x4,x3,x2,x1 and x0,y8,y7,y6,y5,y4,y3,y2 and so it on
  */
-int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last)
+int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last, int ** compressed_length)
 {
 	// We start at 4 to give room for 32b header for each chunk
 	static int out_index = 4;
@@ -188,8 +188,9 @@ int write_code_word(unsigned char *out_stream, int code, const unsigned char cod
 			// Padding is aready taken care of I think
 			out_stream[out_index++] = leftover;
 		}
-
+        **compressed_length = out_index;
 		// move from bit position 0-32 to 1-32
+        //printf("%d\n",out_index);
 		out_index <<= 1;
 		// zero out bottom bit
 		out_index &= 0xFFFFFFFE;
