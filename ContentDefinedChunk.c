@@ -11,6 +11,7 @@
 #define WindowSize (16)
 #define FingerprintBits (64)
 #define PRIME (23)
+#define ChunkAverageSize (12)
 
 void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *ChunkNumber,
 			 int in_len)
@@ -25,7 +26,7 @@ void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *Chun
         rollhash = (rollhash * PRIME + Input[i + 16] - Input[i] * POW) % Modulus;
 	
         chunklength++;
-        long lowerbits = rollhash & ((long)pow(2, 12) - 1);
+        long lowerbits = rollhash & ((long)pow(2, ChunkAverageSize) - 1);
 	
         if (chunklength == 8192 || lowerbits == 0 || i == (in_len - WindowSize - 1)) {
             ChunkLength[j++] = chunklength;
