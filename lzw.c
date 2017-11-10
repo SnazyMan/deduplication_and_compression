@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "lzw.h"
+#include <math.h>
 
 // root and tail of dictionary list
 struct dict_node *dict_root;
@@ -46,10 +47,12 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     
     // read the first char, guarenteed to be in dict_root
     prefix = in_chunk[index++];
-    
+    int k=0;
+
     // now encode normally
     while (index != chunk_length) {
-        
+        printf("entry=%d,index=%d,c=%c,prefix=%d,current_code_len=%d\n", tail->value, index ,c,prefix,current_code_len);
+
         // read the next byte from the chunk
         c = in_chunk[index++];
         
@@ -61,19 +64,24 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
         else {
             // add to dict_root
             dictionary_add(prefix, c, next_code++);
-            
-            if (prefix >= CURRENT_MAX_CODES(current_code_len))
+            //printf("prefix=%d,current_code_len=%d\n",prefix,current_code_len);
+            if (prefix >= CURRENT_MAX_CODES(current_code_len) || tail->value >= CURRENT_MAX_CODES(current_code_len)){
                 current_code_len++;
-            
+            }
             //encode to output stream
             write_code_word(out_chunk, prefix, current_code_len, last, compressed_chunk_lenghth);
             
             prefix = c;
+            
+            
         }
     }
     
     // no more input.  write out last of the code
     write_code_word(out_chunk, prefix, current_code_len, last = 1,compressed_chunk_lenghth);
+    
+    dict_root=NULL;
+    tail= NULL;
     
     out_index = 4;
     leftover = 0;
@@ -99,19 +107,19 @@ int dict_init()
         node->suffix_char = (unsigned char)i;
         append_node(node);
     }
-    dict_root = node;
+    //dict_root = node;
     return 0;
 }
 
 void append_node(struct dict_node *node)
 {
-    if (dict_root != 0)
+    if (dict_root != NULL)
         tail->next = node;
     else
         dict_root = node;
     
     tail = node;
-    node->next = 0;
+    node->next = NULL;
 }
 
 int dictionary_lookup(int prefix, unsigned char character)
