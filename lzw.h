@@ -45,3 +45,4 @@ int dictionary_lookup(int prefix, unsigned char character);
 void dictionary_add(int prefix, unsigned char character, int value);
 
 // Cleanup method. Memory leakkiinnn
+void free_dict();

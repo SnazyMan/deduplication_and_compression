@@ -6,9 +6,7 @@
 // root and tail of dictionary list
 struct dict_node *dict_root;
 struct dict_node *tail;
-static int out_index = 4;
-static unsigned char leftover = 0;
-static int n_leftover = 0;
+
 /*
  * LZW encoding, takes a pointer to input chunk location and outputs
  * a pointer to the encoded chunk
@@ -31,7 +29,7 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     }
     
     // Initialize dict_root
-    ret = dict_init(dict_root);
+    ret = dict_init();
     if (ret != 0) {
         printf("Allocation error dict_root roots\n");
         return -1;
@@ -47,11 +45,9 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     
     // read the first char, guarenteed to be in dict_root
     prefix = in_chunk[index++];
-    int k=0;
 
     // now encode normally
     while (index != chunk_length) {
-        printf("entry=%d,index=%d,c=%c,prefix=%d,current_code_len=%d\n", tail->value, index ,c,prefix,current_code_len);
 
         // read the next byte from the chunk
         c = in_chunk[index++];
@@ -64,31 +60,24 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
         else {
             // add to dict_root
             dictionary_add(prefix, c, next_code++);
-            //printf("prefix=%d,current_code_len=%d\n",prefix,current_code_len);
-            if (prefix >= CURRENT_MAX_CODES(current_code_len) || tail->value >= CURRENT_MAX_CODES(current_code_len)){
+
+	    // Check to see if dictionary size can be represented in code length
+            if (tail->value >= CURRENT_MAX_CODES(current_code_len)) {
                 current_code_len++;
             }
+	    
             //encode to output stream
             write_code_word(out_chunk, prefix, current_code_len, last, compressed_chunk_lenghth);
             
             prefix = c;
-            
-            
         }
     }
     
     // no more input.  write out last of the code
     write_code_word(out_chunk, prefix, current_code_len, last = 1,compressed_chunk_lenghth);
     
-    dict_root=NULL;
-    tail= NULL;
-    
-    out_index = 4;
-    leftover = 0;
-    n_leftover = 0;
-    
-    // free the dict_root
-    //free_tree(dict_root);
+    // cleanup the dictionary
+    free_dict();
     
     return 0;
 }
@@ -107,7 +96,7 @@ int dict_init()
         node->suffix_char = (unsigned char)i;
         append_node(node);
     }
-    //dict_root = node;
+
     return 0;
 }
 
@@ -140,9 +129,26 @@ void dictionary_add(int prefix, unsigned char character, int value)
     node->value = value;
     node->prefix_code = prefix;
     node->suffix_char = character;
-    //printf("\n(%i) = (%i) + (%i)\n", node->value, node->prefix, node->character);
     append_node(node);
 }
+
+void free_dict()
+{
+	struct dict_node *tmp;
+	
+	// iterate through dictionary freeing along the way
+	while (dict_root != NULL) {
+		tmp = dict_root;
+		dict_root = dict_root->next;
+		free(tmp);
+	}
+	
+	// set dict_root and tail to NULL
+	dict_root=NULL;
+	tail= NULL;
+}
+
+// I need to break this function into smaller functions
 
 /*
  * This function writes a code word to the output stream
@@ -152,69 +158,76 @@ void dictionary_add(int prefix, unsigned char character, int value)
  * The next code word will be packed into the stream changing the second byte to:
  * x8,x7,x6,x5,x4,x3,x2,x1 and x0,y8,y7,y6,y5,y4,y3,y2 and so it on
  */
-int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last, int * compressed_length)
+int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last, int *compressed_length)
 {
-    // We start at 4 to give room for 32b header for each chunk
-    //static int out_index = 4;
-    //static unsigned char leftover = 0;
-    //static int n_leftover = 0;
-    unsigned char tmp = 0;
-    
-    /*
-     * If there is no leftover bits, write 8 or 16 most significant bits to stream
-     * save the leftover bits in leftover to go out on next iteration
-     */
-    if (n_leftover == 0) {
-        n_leftover = code_len % CHAR_BITS;
-        leftover = code << (CHAR_BITS - n_leftover);
-        if (code_len == 16) {
-            out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
-        }
-        out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
-    }
-    else {
-        // Move leftover bits to most significant pos in tmp
-        // place code_len - n_leftover bits into stream with
-        // leftover bits occupying MSB following MSB of code
-        tmp = code >> (code_len - (CHAR_BITS - n_leftover));
-        tmp |= leftover;
-        out_stream[out_index++] = tmp;
-        n_leftover = (code_len - (CHAR_BITS - n_leftover));
-        if (n_leftover == 8) {
-            leftover = code << (CHAR_BITS - n_leftover);
-            out_stream[out_index++] = leftover;
-            n_leftover = 0;
-            leftover = 0;
-        }
-        else if (n_leftover > 8) {
-            out_stream[out_index++] = code >> (n_leftover - CHAR_BITS);
-            n_leftover = (n_leftover - CHAR_BITS);
-            leftover = code << (CHAR_BITS - n_leftover);
-        }
-        else {
-            leftover = code << (CHAR_BITS - n_leftover);
-        }
-    }
-    
-    // write out any leftover bits, pad chunk, add header
-    if (last) {
-        if (n_leftover) {
-            // Padding is aready taken care of I think
-            out_stream[out_index++] = leftover;
-        }
-        *compressed_length = out_index;
-        // move from bit position 0-32 to 1-32
-        //printf("%d\n",out_index);
-        out_index <<= 1;
-        // zero out bottom bit
-        out_index &= 0xFFFFFFFE;
-        //partition into 4 bytes
-        out_stream[0] = (unsigned char)(out_index & 0x000000FF);
-        out_stream[1] = (unsigned char)((out_index & 0x0000FF00) >> 8);
-        out_stream[2] = (unsigned char)((out_index & 0x00FF0000) >> 16);
-        out_stream[3] = (unsigned char)((out_index & 0xFF000000) >> 24);
-    }
-    
-    // Are there failure conditions?
-    return 0;
+	// We start at 4 to give room for 32b header for each chunk
+	static int out_index = 4;
+	static unsigned char leftover = 0;
+	static int n_leftover = 0;
+	unsigned char tmp = 0;
+	int header;
+	
+	/*
+	 * If there is no leftover bits, write 8 or 16 most significant bits to stream
+	 * save the leftover bits in leftover to go out on next iteration
+	 */
+	if (n_leftover == 0) {
+		n_leftover = code_len % CHAR_BITS;
+		leftover = code << (CHAR_BITS - n_leftover);
+		if (code_len == 16) {
+			out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
+		}
+		out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
+	}
+	else {
+		// Move leftover bits to most significant pos in tmp
+		// place code_len - n_leftover bits into stream with
+		// leftover bits occupying MSB following MSB of code
+		tmp = code >> (code_len - (CHAR_BITS - n_leftover));
+		tmp |= leftover;
+		out_stream[out_index++] = tmp;
+		n_leftover = (code_len - (CHAR_BITS - n_leftover));
+		if (n_leftover == 8) {
+			leftover = code << (CHAR_BITS - n_leftover);
+			out_stream[out_index++] = leftover;
+			n_leftover = 0;
+			leftover = 0;
+		}
+		else if (n_leftover > 8) {
+			out_stream[out_index++] = code >> (n_leftover - CHAR_BITS);
+			n_leftover = (n_leftover - CHAR_BITS);
+			leftover = code << (CHAR_BITS - n_leftover);
+		}
+		else {
+			leftover = code << (CHAR_BITS - n_leftover);
+		}
+	}
+	
+	// write out any leftover bits, pad chunk, add header
+	if (last) {
+		if (n_leftover) {
+			// Padding is aready taken care of I think
+			out_stream[out_index++] = leftover;
+		}
+
+		// Save compressed length for other functions in higher stack frames
+		*compressed_length = out_index;
+	       
+		// move from bit position 0-32 to 1-32
+		header = (out_index - 4) << 1;
+		// zero out bottom bit
+		header &= 0xFFFFFFFE;
+		out_stream[0] = (unsigned char)(header & 0x000000FF);
+		out_stream[1] = (unsigned char)((header & 0x0000FF00) >> 8);
+		out_stream[2] = (unsigned char)((header & 0x00FF0000) >> 16);
+		out_stream[3] = (unsigned char)((header & 0xFF000000) >> 24);
+
+		// Reset static variables for new chunk to zero
+		out_index = 4;
+		leftover = 0;
+		n_leftover = 0;
+	}
+	
+	// Are there failure conditions?
+	return 0;
 }

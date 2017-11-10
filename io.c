@@ -3,13 +3,13 @@
 
 int load_data(unsigned char *data)
 {
-	unsigned int size = 300000;
+	unsigned int size = INPUT_SIZE;
+	unsigned int bytes_read;
 	
 #ifdef __SDSCC__
 	FIL file;
-	unsigned int bytes_read;
 	
-	FRESULT result = f_open(&file, "Input.bin", FA_READ);
+	FRESULT result = f_open(&file, "testfile.xml", FA_READ);
 	if (result != FR_OK) {
 		printf("Could not open input file.\n");
 		return -1;
@@ -27,13 +27,14 @@ int load_data(unsigned char *data)
 		return -1;
 	}
 #else
-	FILE *file = fopen("./Input.bin", "r");
+	FILE *file = fopen("./testfile.xml", "r");
 	if (file == NULL) {
 		printf("Could not open input file.\n");
 		return -1;
 	}
-	
-	if (fread(data, 1, size, file) != size) {
+
+	bytes_read = fread(data, 1, size, file);
+	if (bytes_read != size) {
 		printf("Could not read input data\n");
 		return -1;
 	}

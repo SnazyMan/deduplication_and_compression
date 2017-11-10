@@ -10,6 +10,7 @@
 #define Matching_h
 
 #include <stdio.h>
-void Matching(unsigned char * digest, unsigned char * historytable, int *LZWChunkNumber, int *deduplicate,int *index);
+void Matching(unsigned char *digest, unsigned char *historytable, int *LZWChunkNumber,
+	      int *deduplicate, int *index);
 
 #endif /* Matching_h */
