@@ -76,7 +76,7 @@ void sha256_init(struct sha256_ctx *ctx)
  */ 
 void sha256_update(struct sha256_ctx *ctx, const unsigned char *data, size_t len)
 {
-	unsigned char i;
+	int i;
 
 	for (i = 0; i < len; ++i) {
 		ctx->data[ctx->datalen] = data[i];

@@ -134,18 +134,18 @@ void dictionary_add(int prefix, unsigned char character, int value)
 
 void free_dict()
 {
-	struct dict_node *tmp;
+    struct dict_node *tmp;
 	
-	// iterate through dictionary freeing along the way
-	while (dict_root != NULL) {
-		tmp = dict_root;
-		dict_root = dict_root->next;
-		free(tmp);
-	}
-	
-	// set dict_root and tail to NULL
-	dict_root=NULL;
-	tail= NULL;
+    // iterate through dictionary freeing along the way
+    while (dict_root != NULL) {
+	    tmp = dict_root;
+	    dict_root = dict_root->next;
+	    free(tmp);
+    }
+    
+    // set dict_root and tail to NULL
+    dict_root=NULL;
+    tail= NULL;
 }
 
 // I need to break this function into smaller functions
@@ -161,73 +161,73 @@ void free_dict()
 int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last, int *compressed_length)
 {
 	// We start at 4 to give room for 32b header for each chunk
-	static int out_index = 4;
-	static unsigned char leftover = 0;
-	static int n_leftover = 0;
-	unsigned char tmp = 0;
-	int header;
-	
-	/*
-	 * If there is no leftover bits, write 8 or 16 most significant bits to stream
-	 * save the leftover bits in leftover to go out on next iteration
-	 */
-	if (n_leftover == 0) {
-		n_leftover = code_len % CHAR_BITS;
-		leftover = code << (CHAR_BITS - n_leftover);
-		if (code_len == 16) {
-			out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
-		}
-		out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
+    static int out_index = 4;
+    static unsigned char leftover = 0;
+    static int n_leftover = 0;
+    unsigned char tmp = 0;
+    int header;
+    
+    /*
+     * If there is no leftover bits, write 8 or 16 most significant bits to stream
+     * save the leftover bits in leftover to go out on next iteration
+     */
+    if (n_leftover == 0) {
+        n_leftover = code_len % CHAR_BITS;
+	leftover = code << (CHAR_BITS - n_leftover);
+	if (code_len == 16) {
+	    out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
+	}
+	out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
+    }
+    else {
+        // Move leftover bits to most significant pos in tmp
+	// place code_len - n_leftover bits into stream with
+	// leftover bits occupying MSB following MSB of code
+	tmp = code >> (code_len - (CHAR_BITS - n_leftover));
+	tmp |= leftover;
+	out_stream[out_index++] = tmp;
+	n_leftover = (code_len - (CHAR_BITS - n_leftover));
+	if (n_leftover == 8) {
+	    leftover = code << (CHAR_BITS - n_leftover);
+	    out_stream[out_index++] = leftover;
+	    n_leftover = 0;
+	    leftover = 0;
+	}
+	else if (n_leftover > 8) {
+	    out_stream[out_index++] = code >> (n_leftover - CHAR_BITS);
+	    n_leftover = (n_leftover - CHAR_BITS);
+	    leftover = code << (CHAR_BITS - n_leftover);
 	}
 	else {
-		// Move leftover bits to most significant pos in tmp
-		// place code_len - n_leftover bits into stream with
-		// leftover bits occupying MSB following MSB of code
-		tmp = code >> (code_len - (CHAR_BITS - n_leftover));
-		tmp |= leftover;
-		out_stream[out_index++] = tmp;
-		n_leftover = (code_len - (CHAR_BITS - n_leftover));
-		if (n_leftover == 8) {
-			leftover = code << (CHAR_BITS - n_leftover);
-			out_stream[out_index++] = leftover;
-			n_leftover = 0;
-			leftover = 0;
-		}
-		else if (n_leftover > 8) {
-			out_stream[out_index++] = code >> (n_leftover - CHAR_BITS);
-			n_leftover = (n_leftover - CHAR_BITS);
-			leftover = code << (CHAR_BITS - n_leftover);
-		}
-		else {
-			leftover = code << (CHAR_BITS - n_leftover);
-		}
+	     leftover = code << (CHAR_BITS - n_leftover);
+	}
+    }
+    
+    // write out any leftover bits, pad chunk, add header
+    if (last) {
+        if (n_leftover) {
+	    // Padding is aready taken care of I think
+	    out_stream[out_index++] = leftover;
 	}
 	
-	// write out any leftover bits, pad chunk, add header
-	if (last) {
-		if (n_leftover) {
-			// Padding is aready taken care of I think
-			out_stream[out_index++] = leftover;
-		}
-
-		// Save compressed length for other functions in higher stack frames
-		*compressed_length = out_index;
-	       
-		// move from bit position 0-32 to 1-32
-		header = (out_index - 4) << 1;
-		// zero out bottom bit
-		header &= 0xFFFFFFFE;
-		out_stream[0] = (unsigned char)(header & 0x000000FF);
-		out_stream[1] = (unsigned char)((header & 0x0000FF00) >> 8);
-		out_stream[2] = (unsigned char)((header & 0x00FF0000) >> 16);
-		out_stream[3] = (unsigned char)((header & 0xFF000000) >> 24);
-
-		// Reset static variables for new chunk to zero
-		out_index = 4;
-		leftover = 0;
-		n_leftover = 0;
-	}
+	// Save compressed length for other functions in higher stack frames
+	*compressed_length = out_index;
 	
-	// Are there failure conditions?
-	return 0;
+	// move from bit position 0-32 to 1-32
+	header = (out_index - 4) << 1;
+	// zero out bottom bit
+	header &= 0xFFFFFFFE;
+	out_stream[0] = (unsigned char)(header & 0x000000FF);
+	out_stream[1] = (unsigned char)((header & 0x0000FF00) >> 8);
+	out_stream[2] = (unsigned char)((header & 0x00FF0000) >> 16);
+	out_stream[3] = (unsigned char)((header & 0xFF000000) >> 24);
+	
+	// Reset static variables for new chunk to zero
+	out_index = 4;
+	leftover = 0;
+	n_leftover = 0;
+    }
+    
+    // Are there failure conditions?
+    return 0;
 }
