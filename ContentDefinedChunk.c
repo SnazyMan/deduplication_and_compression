@@ -22,10 +22,10 @@ void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *Chun
     long POW = ((long)pow(PRIME, WindowSize)) % Modulus;
     long rollhash = 0;
     int j = 0;
-    int chunklength = 0;
+    int chunklength = WindowSize;
     
-    for (int i = 0; i < in_len - WindowSize; i++) {
-        rollhash = (rollhash * PRIME + Input[i + 16] - Input[i] * POW) % Modulus;
+    for (int i = 0; i < in_len-WindowSize; i++) {
+        rollhash = (rollhash * PRIME + Input[i + WindowSize] - Input[i] * POW) % Modulus;
 	
         chunklength++;
         long lowerbits = rollhash & ((long)pow(2, ChunkAverageSize) - 1);
