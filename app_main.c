@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <math.h>
 #include <string.h>
 #include "sha256.h"
@@ -7,12 +9,24 @@
 #include "io.h"
 #include "lzw.h"
 
+//#define STAGES (4)
+#define MaxChunkSize (8192)
+#define MinChunkSize (512)
+
+
+
 int main()
 {
 	int ret;
-	
-    /***********************         Loading Data             *********************/
+    unsigned char *Input = malloc(INPUT_SIZE);
+    unsigned char *Output = malloc(OUTPUT_SIZE);
 
+
+    memset(Output, 0, OUTPUT_SIZE);
+    
+    /***********************           Loading Data             *********************/
+
+   
 // Mount FAT filesystem on SD card
 #ifdef __SDSCC__
     FATFS FS;
@@ -23,19 +37,18 @@ int main()
     }
 #endif
 	
-    unsigned char Input[INPUT_SIZE];
-    unsigned char Output[OUTPUT_SIZE];
-    memset(Output, 0, OUTPUT_SIZE);
+    
+    
     load_data(Input);
 
     
-    /***********************          4 Stages             *********************/
+    /***********************            4 Stages             *********************/
     
     int ChunkLength[10000];
     int ChunkNumber = 0;
     int PreviousLength = 0;
     unsigned char digest[32];
-    unsigned char historytable[300000];
+    unsigned char historytable[INPUT_SIZE/MinChunkSize*32];
     int index = 0;
     int LZWChunkNumber = 0;
     int deduplicate = 0;
@@ -82,10 +95,14 @@ int main()
     }
 
 
-     /***********************         Storing Data             *********************/
+     /***********************           Storing Data             *********************/
     
-    store_data("OUT.bin", Output, PreviousCompressedLength);
-    //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
+    //store_data("OUT.bin", Output, PreviousCompressedLength);
+    store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
     
+    free(Input);
+    free(Output);
+    puts("Application completed successfully.");
+
     return 0;
 }
