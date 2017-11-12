@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <math.h>
 #include <string.h>
 #include "sha256.h"
@@ -7,33 +9,42 @@
 #include "io.h"
 #include "lzw.h"
 
-// Declare these global to put them in the heap
-// To large for the stack
-unsigned char Input[INPUT_SIZE];
-unsigned char Output[OUTPUT_SIZE];
-unsigned char historytable[20000];
-unsigned int ChunkLength[30000];
+//#define STAGES (4)
+#define MAX_CHUNK_SIZE (8192)
+#define MIN_CHUNK_SIZE (512)
 
 int main()
 {
-	int ret;
-	
-    /***********************         Loading Data             *********************/
+    unsigned char *Input = (unsigned char*)malloc(INPUT_SIZE);
+    unsigned char *Output = (unsigned char*)malloc(OUTPUT_SIZE);
+    if (Input == NULL || Output == NULL) {
+        puts("Memory allocation error");
+        return -1;
+    }
+    
+    int MaxChunkNumber=INPUT_SIZE / MIN_CHUNK_SIZE;
+    int *ChunkLength = (int*)malloc(MaxChunkNumber);
+    int hisTableSize= INPUT_SIZE / MIN_CHUNK_SIZE * 32;
+    unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
 
+    memset(Output, 0, OUTPUT_SIZE);
+    
+    /***********************           Loading Data             *********************/
+
+   
 // Mount FAT filesystem on SD card
 #ifdef __SDSCC__
     FATFS FS;
-    ret = f_mount(&FS, "0:/", 0);
+    int ret = f_mount(&FS, "0:/", 0);
     if (ret != FR_OK) {
 	printf("Could not mount SD-card\n");
 	return ret;
     }
 #endif
 	
-    memset(Output, 0, OUTPUT_SIZE);
     load_data(Input);
 
-    /***********************          4 Stages             *********************/
+    /***********************            4 Stages             *********************/
     
     int ChunkNumber = 0;
     int PreviousLength = 0;
@@ -43,11 +54,11 @@ int main()
     int deduplicate = 0;
     int CompressedLength = 0;
     int PreviousCompressedLength = 0;
-
     // Stage 1
     ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
 
     // Stage 2-4, sent the chunks one by one to other stages
+    
     for (int k = 0; k < ChunkNumber; k++) {
 
         // Stage 2 : SHA stage
@@ -84,10 +95,24 @@ int main()
     }
 
 
-     /***********************         Storing Data             *********************/
+     /***********************           Storing Data             *********************/
     
-    store_data("OUT.bin", Output, PreviousCompressedLength);
-    //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
+    //store_data("OUT.bin", Output, PreviousCompressedLength);
+    store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
+    //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
     
+    free(Input);
+    free(Output);
+    free(ChunkLength);
+    free(historytable);
+    Input =NULL;
+    Output=NULL;
+    ChunkLength=NULL;
+    historytable=NULL;
+    printf("The total number of chunks is %d\n", ChunkNumber);
+    printf("The number of LZW chunks is %d\n", LZWChunkNumber);
+    printf("the number of duplicate chunks is %d\n",ChunkNumber-LZWChunkNumber);
+    puts("Application completed successfully.");
+
     return 0;
 }
