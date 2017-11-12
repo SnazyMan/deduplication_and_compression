@@ -1,10 +1,3 @@
-//
-//
-//  ESE532
-//
-//  Created by RenzhiHuang on 2017/11/4.
-//  Copyright © 2017年 RenzhiHuang. All rights reserved.
-//
 #include <math.h>
 #include "ContentDefinedChunk.h"
 
@@ -18,7 +11,7 @@
 void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *ChunkNumber,
 			 int in_len)
 {
-    long Modulus = (long)pow(2, 64);
+    long Modulus = (long)pow(2, FingerprintBits);
     long POW = ((long)pow(PRIME, WindowSize)) % Modulus;
     long rollhash = 0;
     int j = 0;
@@ -30,8 +23,10 @@ void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *Chun
         chunklength++;
         long lowerbits = rollhash & ((long)pow(2, ChunkAverageSize) - 1);
 	
-        if ((chunklength >= MinChunkSize) &&(chunklength == MaxChunkSize || lowerbits == 0 || i == (in_len - WindowSize - 1))) {
-            ChunkLength[j++] = chunklength;
+        if (((chunklength >= MinChunkSize) &&(chunklength == MaxChunkSize || lowerbits == 0)) || i == (in_len - WindowSize - 1)) {
+        //if((chunklength == MaxChunkSize || lowerbits == 0 || i == (in_len - WindowSize - 1))) {
+            ChunkLength[j] = chunklength;
+            j++;
             (*ChunkNumber)++;
             chunklength=0;
         }

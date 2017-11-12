@@ -17,10 +17,18 @@
 
 int main()
 {
-	int ret;
-    unsigned char *Input = malloc(INPUT_SIZE);
-    unsigned char *Output = malloc(OUTPUT_SIZE);
-
+	//int ret;
+    unsigned char *Input = (unsigned char*)malloc(INPUT_SIZE);
+    unsigned char *Output = (unsigned char*)malloc(OUTPUT_SIZE);
+    if (Input == NULL || Output ==NULL){
+        puts("Memory allocation error");
+        //exit(-1);
+    }
+    
+    int MaxChunkNumber=INPUT_SIZE/MinChunkSize;
+    int *ChunkLength = (int*)malloc(MaxChunkNumber);
+    int hisTableSize=INPUT_SIZE/MinChunkSize*32;
+    unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
 
     memset(Output, 0, OUTPUT_SIZE);
     
@@ -44,21 +52,19 @@ int main()
     
     /***********************            4 Stages             *********************/
     
-    int ChunkLength[10000];
     int ChunkNumber = 0;
     int PreviousLength = 0;
     unsigned char digest[32];
-    unsigned char historytable[INPUT_SIZE/MinChunkSize*32];
     int index = 0;
     int LZWChunkNumber = 0;
     int deduplicate = 0;
     int CompressedLength = 0;
     int PreviousCompressedLength = 0;
-
     // Stage 1
     ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
 
     // Stage 2-4, sent the chunks one by one to other stages
+    
     for (int k = 0; k < ChunkNumber; k++) {
 
         // Stage 2 : SHA stage
@@ -99,9 +105,16 @@ int main()
     
     //store_data("OUT.bin", Output, PreviousCompressedLength);
     store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
+    //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
     
     free(Input);
     free(Output);
+    free(ChunkLength);
+    free(historytable);
+    Input =NULL;
+    Output=NULL;
+    ChunkLength=NULL;
+    historytable=NULL;
     puts("Application completed successfully.");
 
     return 0;
