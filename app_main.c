@@ -22,9 +22,9 @@ int main()
         return -1;
     }
     
-    int MaxChunkNumber=INPUT_SIZE / MIN_CHUNK_SIZE;
+    int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
     int *ChunkLength = (int*)malloc(MaxChunkNumber);
-    int hisTableSize= INPUT_SIZE / MIN_CHUNK_SIZE * 32;
+    int hisTableSize = INPUT_SIZE / MIN_CHUNK_SIZE * 32;
     unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
 
     memset(Output, 0, OUTPUT_SIZE);
@@ -54,11 +54,11 @@ int main()
     int deduplicate = 0;
     int CompressedLength = 0;
     int PreviousCompressedLength = 0;
+
     // Stage 1
     ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
 
     // Stage 2-4, sent the chunks one by one to other stages
-    
     for (int k = 0; k < ChunkNumber; k++) {
 
         // Stage 2 : SHA stage

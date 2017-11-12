@@ -56,8 +56,8 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
         
         // look for code + c in the dict_root
         //node = find_dict_root_entry(dict_root, code, c);
-        //i = dictionary_lookup(prefix, c);
-	i = tableSearch(prefix, c, table);
+        i = dictionary_lookup(prefix, c);
+	//i = tableSearch(prefix, c, table);
         if (i != -1)
             prefix = i;
         else {
@@ -91,20 +91,20 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
  */
 int dict_init()
 {
-	// struct dict_node *node;
+    struct dict_node *node;
     
-	//for (int i = 0; i < 256; i++) {
-	// node = malloc(sizeof(struct dict_node));
-	// node->prefix_code = -1;
-	// node->suffix_char = (unsigned char)i;
-        //append_node(node);
-	// }
+    for (int i = 0; i < 256; i++) {
+        node = malloc(sizeof(struct dict_node));
+	node->prefix_code = -1;
+	node->suffix_char = (unsigned char)i;
+	append_node(node);
+    }
 
-	Entry entry;
-	for (i = 0; i <= 256; i++) {
-		entry = entryMake(i, -1, 0);
-		tableInstert(entry, table);
-	}
+//	Entry entry;
+//	for (i = 0; i <= 256; i++) {
+//		entry = entryMake(i, -1, 0);
+//		tableInstert(entry, table);
+//	}
 		
     return 0;
 }
@@ -156,7 +156,7 @@ void free_dict()
     dict_root=NULL;
     tail= NULL;
 }
-
+/*
 Entry entryMake( unsigned char lastChar, unsigned int prefix, int accessed )
 {
 	Entry entry;
@@ -291,7 +291,7 @@ void freeTable( Table table )
 	free(table->entries);
 	free(table->lookup);
 	free(table);
-}
+}*/
 
 // I need to break this function into smaller functions
 

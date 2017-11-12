@@ -27,7 +27,7 @@ int load_data(unsigned char *data)
 		return -1;
 	}
 #else
-	FILE *file = fopen("./testfile.xml", "r");
+	FILE *file = fopen("./linux.tar", "r");
 	if (file == NULL) {
 		printf("Could not open input file.\n");
 		return -1;
