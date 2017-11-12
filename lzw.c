@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "lzw.h"
 #include <math.h>
 
 // root and tail of dictionary list
 struct dict_node *dict_root;
 struct dict_node *tail;
+Table table;
 
 /*
  * LZW encoding, takes a pointer to input chunk location and outputs
@@ -54,7 +56,8 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
         
         // look for code + c in the dict_root
         //node = find_dict_root_entry(dict_root, code, c);
-        i = dictionary_lookup(prefix, c);
+        //i = dictionary_lookup(prefix, c);
+	i = tableSearch(prefix, c, table);
         if (i != -1)
             prefix = i;
         else {
@@ -88,15 +91,21 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
  */
 int dict_init()
 {
-    struct dict_node *node;
+	// struct dict_node *node;
     
-    for (int i = 0; i < 256; i++) {
-        node = malloc(sizeof(struct dict_node));
-        node->prefix_code = -1;
-        node->suffix_char = (unsigned char)i;
-        append_node(node);
-    }
+	//for (int i = 0; i < 256; i++) {
+	// node = malloc(sizeof(struct dict_node));
+	// node->prefix_code = -1;
+	// node->suffix_char = (unsigned char)i;
+        //append_node(node);
+	// }
 
+	Entry entry;
+	for (i = 0; i <= 256; i++) {
+		entry = entryMake(i, -1, 0);
+		tableInstert(entry, table);
+	}
+		
     return 0;
 }
 
@@ -146,6 +155,142 @@ void free_dict()
     // set dict_root and tail to NULL
     dict_root=NULL;
     tail= NULL;
+}
+
+Entry entryMake( unsigned char lastChar, unsigned int prefix, int accessed )
+{
+	Entry entry;
+	entry = malloc(sizeof(struct entry));
+	entry->lastChar = lastChar;
+	entry->prefix = prefix;
+	entry->accessed = accessed;
+	return entry;
+}
+
+Table tableMake( int maxBits )
+{
+	Table table;
+	int i;
+	table = malloc(sizeof(struct table));
+	table->maxbits = maxBits;
+	table->maxAllowed = 1 << maxBits;
+	table->maxSize = table->maxAllowed << 1;
+	table->size = 0;
+	table->entries = malloc(sizeof(Entry) * table->maxSize);
+	table->lookup = malloc(sizeof(int) * (table->maxSize + 1));
+	for (i = 0; i < table->maxSize; i++)
+	{	
+		table->entries[i] = 0;
+		table->lookup[i] = -1;
+	}
+	table->lookup[table->maxSize] = -1;
+	return table;
+}
+
+int tableInsert ( Entry entry, Table table )
+{
+	unsigned int key;
+	for (key = hash(entry->prefix, entry->lastChar, table); 
+		table->lookup[key] != -1;
+		key = (key + 1) % table->maxSize);
+	table->entries[table->size] = entry;
+	table->lookup[key] = table->size;
+	table->size += 1;
+	return 0;
+}
+
+int tableSearch( int prefix, char lastChar, Table table )
+{
+	unsigned int key;
+	for (key = hash(prefix, lastChar, table); 
+		table->lookup[key] != -1;
+		key = (key + 1) % table->maxSize)
+	{
+		if (table->entries[table->lookup[key]]->prefix == prefix &&
+			table->entries[table->lookup[key]]->lastChar == lastChar)
+		{
+			return table->lookup[key];
+		}
+	}
+	return -1;
+}
+
+unsigned int hash( int prefix, char lastChar, Table table )
+{
+	unsigned int hashed;
+	hashed = ((unsigned) prefix << CHAR_BIT | 
+		(unsigned) lastChar) % (table->maxSize + 1);
+	return hashed;
+}
+
+void tableDump( Table table )
+{
+	int i;
+	for (i = 0; table->entries[i]; i++)
+	{
+		printf("Code: %d\nChar: %c\nPrefix: %d\n\n", i, table->entries[i]->lastChar, table->entries[i]->prefix);
+	}
+}
+
+int getSize ( Table table )
+{
+	return table->size;
+}
+
+void tableSetPos( int code, int pos, Table table )
+{
+	table->entries[code]->accessed = pos;
+}
+
+Table tablePrune( Table table, int window, int pos, int *numbits )
+{
+	int curbits;
+	int maxcode;
+	int code;
+	int swp;
+	Table newTable;
+	int i;
+	newTable = tableMake(table->maxbits);
+	curbits = STARTING_BITS;
+	maxcode = 1 << curbits;
+	for (i = 0; i < table->size; i++)
+	{
+		if (table->entries[i] && 
+			(pos - table->entries[i]->accessed < window || i <= NUM_SPECIALS + UCHAR_MAX))
+		{
+			code = i;
+			while (code >= 0 && table->entries[code])
+			{
+				tableInsert(table->entries[code], newTable);
+				if (maxcode <= getSize(newTable))
+				{
+					curbits++;
+					maxcode *= 2;
+				}
+
+				swp = table->entries[code]->prefix;
+				table->entries[code] = 0;
+				code = swp;
+			}
+		}
+	}
+	*numbits = curbits;
+	freeTable(table);
+	// printf("Table Size: %d\n", newTable->size);
+	// tableDump(newTable);
+	return newTable;
+}
+
+void freeTable( Table table )
+{
+	int i;
+	for (i = 0; i < getSize(table); i++)
+	{
+		free(table->entries[i]);
+	}
+	free(table->entries);
+	free(table->lookup);
+	free(table);
 }
 
 // I need to break this function into smaller functions

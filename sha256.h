@@ -22,7 +22,7 @@ struct sha256_ctx {
 	uint32_t h[8]; // h0-h7 : h0 || h1 ... || h7 = digest
 };	
 	
-int sha256(unsigned char *input_chunk, int chunk_length, unsigned char *digest);
+int sha256(unsigned char *input_chunk, unsigned int chunk_length, unsigned char *digest);
 void sha256_init(struct sha256_ctx *ctx);
 void sha256_update(struct sha256_ctx *ctx, const unsigned char *data, size_t len);
 void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data);

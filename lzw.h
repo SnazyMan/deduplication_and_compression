@@ -17,6 +17,17 @@
 
 #define CURRENT_MAX_CODES(bits)     ((unsigned int)(1 << (bits)))
 
+typedef	struct entry* Entry;
+typedef struct table* Table;
+
+#define STARTING_BITS 9
+#define NUM_SPECIALS 3
+
+int encode( int maxbits, int prune, int window, int empty );
+Entry* pruneArray( Entry * table, int pos, int window, int maxcodes, int *bits, int *codesOut );
+void dump( Entry* table, int numcodes );
+void freeCodeArray( Entry* table, int maxcodes );
+
 // node in dictionary list 
 struct dict_node {
 	unsigned int value; //position in the list
@@ -24,6 +35,33 @@ struct dict_node {
 	unsigned int prefix_code;    // code for remaining chars in string
 
 	struct dict_node *next;
+};
+
+Entry entryMake( unsigned char lastChar, unsigned int prefix, int accessed );
+Table tableMake( int maxBits );
+int tableInsert ( Entry entry, Table table );	
+int tableSearch( int prefix, char lastChar, Table table );
+unsigned int hash( int prefix, char lastChar, Table table );
+int getSize( Table table);
+Table tablePrune( Table table, int window, int pos, int *numbits );
+void freeTable( Table table );
+void tableSetPos( int code, int pos, Table table );
+
+struct entry 
+{
+	char lastChar;
+	int prefix;
+	int accessed;
+};
+
+struct table
+{
+	int maxSize;
+	int maxAllowed;
+	int size;
+	int *lookup;
+	int maxbits;
+	Entry *entries;
 };
 
 // write encoded data

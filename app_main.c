@@ -7,6 +7,13 @@
 #include "io.h"
 #include "lzw.h"
 
+// Declare these global to put them in the heap
+// To large for the stack
+unsigned char Input[INPUT_SIZE];
+unsigned char Output[OUTPUT_SIZE];
+unsigned char historytable[20000];
+unsigned int ChunkLength[30000];
+
 int main()
 {
 	int ret;
@@ -23,19 +30,14 @@ int main()
     }
 #endif
 	
-    unsigned char Input[INPUT_SIZE];
-    unsigned char Output[OUTPUT_SIZE];
     memset(Output, 0, OUTPUT_SIZE);
     load_data(Input);
 
-    
     /***********************          4 Stages             *********************/
     
-    int ChunkLength[10000];
     int ChunkNumber = 0;
     int PreviousLength = 0;
     unsigned char digest[32];
-    unsigned char historytable[300000];
     int index = 0;
     int LZWChunkNumber = 0;
     int deduplicate = 0;

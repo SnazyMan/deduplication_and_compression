@@ -8,27 +8,28 @@
 #include <math.h>
 #include "ContentDefinedChunk.h"
 
-#define WindowSize (16)
-#define FingerprintBits (64)
+#define WINDOW_SIZE (16)
 #define PRIME (23)
-#define ChunkAverageSize (12)
+#define CHUNK_AVERAGE_SIZE (12)
+#define MAX_CHUNK_SIZE 8192 //bytes
 
-void ContentDefinedChunk(const unsigned char *Input, int *ChunkLength, int *ChunkNumber,
-			 int in_len)
+void ContentDefinedChunk(const unsigned char *Input, unsigned int *ChunkLength,
+			 unsigned int *ChunkNumber, int in_len)
 {
     long Modulus = (long)pow(2, 64);
-    long POW = ((long)pow(PRIME, WindowSize)) % Modulus;
+    long POW = ((long)pow(PRIME, WINDOW_SIZE)) % Modulus;
     long rollhash = 0;
-    int j = 0;
-    int chunklength = 0;
+    unsigned int j = 0;
+    unsigned int chunklength = 0;
     
-    for (int i = 0; i < in_len - WindowSize; i++) {
+    for (int i = 0; i < (in_len - WINDOW_SIZE); i++) {
         rollhash = (rollhash * PRIME + Input[i + 16] - Input[i] * POW) % Modulus;
 	
         chunklength++;
-        long lowerbits = rollhash & ((long)pow(2, ChunkAverageSize) - 1);
-	
-        if (chunklength == 8192 || lowerbits == 0 || i == (in_len - WindowSize - 1)) {
+        long lowerbits = rollhash & ((long)pow(2, CHUNK_AVERAGE_SIZE) - 1);
+
+	// End the chunk at max size, at content marker or when out of data
+        if (chunklength == MAX_CHUNK_SIZE || lowerbits == 0 || i == (in_len - WINDOW_SIZE - 1)) {
             ChunkLength[j++] = chunklength;
             (*ChunkNumber)++;
             chunklength=0;

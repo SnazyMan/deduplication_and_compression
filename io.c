@@ -9,7 +9,7 @@ int load_data(unsigned char *data)
 #ifdef __SDSCC__
 	FIL file;
 	
-	FRESULT result = f_open(&file, "testfile.xml", FA_READ);
+	FRESULT result = f_open(&file, "linux.tar", FA_READ);
 	if (result != FR_OK) {
 		printf("Could not open input file.\n");
 		return -1;

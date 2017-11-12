@@ -33,7 +33,7 @@ static const uint32_t k[64] = {
  * Note that ARM is little endian, which is somewhat important
  * for this algorithm
  */
-int sha256(unsigned char *input_chunk, int chunk_length, unsigned char *digest)
+int sha256(unsigned char *input_chunk, unsigned int chunk_length, unsigned char *digest)
 {
 	struct sha256_ctx ctx;
 	

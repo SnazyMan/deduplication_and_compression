@@ -4,7 +4,7 @@
 void Matching(unsigned char * digest, unsigned char * historytable, int *LZWChunkNumber, int *deduplicate,int *index)
 {
     int currentLZWChunkNumber = (*LZWChunkNumber);
-	
+    
     if (currentLZWChunkNumber == 0) {
 	*deduplicate = 0;
 	for (int k = 0; k<32; k++) {
@@ -13,7 +13,7 @@ void Matching(unsigned char * digest, unsigned char * historytable, int *LZWChun
 	(*LZWChunkNumber)++;
     }
     else {	
-	for (int i=0; i < currentLZWChunkNumber; i++) {
+	for (int i = 0; i < currentLZWChunkNumber; i++) {
 	    int equal = 0;
 	    for (int j = 0; j < 32; j++) {
 		if (digest[j] == historytable[i * 32 + j]) {
