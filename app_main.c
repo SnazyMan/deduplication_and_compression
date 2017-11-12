@@ -115,6 +115,9 @@ int main()
     Output=NULL;
     ChunkLength=NULL;
     historytable=NULL;
+    printf("The total number of chunks is %d\n", ChunkNumber);
+    printf("The number of LZW chunks is %d\n", LZWChunkNumber);
+    printf("the number of duplicate chunks is %d\n",ChunkNumber-LZWChunkNumber);
     puts("Application completed successfully.");
 
     return 0;
