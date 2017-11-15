@@ -9,6 +9,8 @@ struct dict_node *dict_root;
 struct dict_node *tail;
 Table table;
 
+int global_code_len = 0;
+
 /*
  * LZW encoding, takes a pointer to input chunk location and outputs
  * a pointer to the encoded chunk
@@ -67,6 +69,10 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
 	    // Check to see if dictionary size can be represented in code length
             if (tail->value >= CURRENT_MAX_CODES(current_code_len)) {
                 current_code_len++;
+		if (current_code_len > global_code_len) {
+			global_code_len = current_code_len;
+			printf("global codelen = %d\n", global_code_len);			
+		}
             }
 	    
             //encode to output stream
@@ -91,20 +97,20 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
  */
 int dict_init()
 {
-    struct dict_node *node;
+	 struct dict_node *node;
     
-    for (int i = 0; i < 256; i++) {
-        node = malloc(sizeof(struct dict_node));
-	node->prefix_code = -1;
-	node->suffix_char = (unsigned char)i;
-	append_node(node);
-    }
+	for (int i = 0; i < 256; i++) {
+		node = malloc(sizeof(struct dict_node));
+		node->prefix_code = -1;
+		node->suffix_char = (unsigned char)i;
+		append_node(node);
+	 }
 
-//	Entry entry;
-//	for (i = 0; i <= 256; i++) {
-//		entry = entryMake(i, -1, 0);
-//		tableInstert(entry, table);
-//	}
+	//Entry entry;
+	//for (i = 0; i <= 256; i++) {
+	//	entry = entryMake(i, -1, 0);
+	//	tableInstert(entry, table);
+	//}
 		
     return 0;
 }
@@ -156,7 +162,7 @@ void free_dict()
     dict_root=NULL;
     tail= NULL;
 }
-/*
+
 Entry entryMake( unsigned char lastChar, unsigned int prefix, int accessed )
 {
 	Entry entry;
@@ -291,7 +297,7 @@ void freeTable( Table table )
 	free(table->entries);
 	free(table->lookup);
 	free(table);
-}*/
+}
 
 // I need to break this function into smaller functions
 
