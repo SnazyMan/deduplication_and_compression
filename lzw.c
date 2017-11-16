@@ -5,7 +5,8 @@
 
 // declare the dictionary
 struct dict_node dic[MAX_DICT_SIZE];
-
+int iteration = 0;
+int empty = -1;
 /*
  * LZW encoding, takes a pointer to input chunk location and outputs
  * a pointer to the encoded chunk
@@ -20,7 +21,7 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     unsigned int next_code; // next available code index
     unsigned char c; // character to add to string
     int last = 0; //false
-    
+    //int empty=0;
     // validate arguments
     if ((in_chunk == 0) || (out_chunk == 0) || (chunk_length == 0)) {
         //
@@ -80,6 +81,9 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
 
     // no more input.  write out last of the code
     write_code_word(out_chunk, prefix, current_code_len, last = 1,compressed_chunk_lenghth);
+    printf("iteration times= %d\n",iteration);
+    printf("the total entry is %d\n",next_code);
+    iteration = 0;
         return 0;
 }
 
@@ -120,6 +124,7 @@ int dictionary_lookup(int prefix, unsigned char character)
     }
     //don't find at this address & this address is still empty.
     else if((dic[address].value == -3) && (dic[address].prefix_code==-3) && (dic[address].suffix_char==(unsigned char)(-3))){
+        empty=address;
                ret = -1;
 
     }
@@ -128,6 +133,7 @@ int dictionary_lookup(int prefix, unsigned char character)
         int k=address;
         int rehash=0;
         while(k<(MAX_DICT_SIZE+address)){
+            iteration++;
             k++;
             rehash=k%MAX_DICT_SIZE;
             if((dic[rehash].prefix_code==prefix) && (dic[rehash].suffix_char==character)){
@@ -135,6 +141,7 @@ int dictionary_lookup(int prefix, unsigned char character)
                 break;
             }
             else if((dic[rehash].value == -3) &&(dic[rehash].prefix_code==-3) && (dic[rehash].suffix_char==(unsigned char)(-3))){
+                empty=rehash;
                 ret= -1;
                 break;
             }
@@ -147,12 +154,14 @@ int dictionary_lookup(int prefix, unsigned char character)
 }
 void dictionary_add(int prefix, unsigned char character,int value)
 {
+    /*
     long temp = (prefix + (long)character+256);
     int address = temp % 4093;
 
     int k=address;
     int rehash=0;
     while(k<=(MAX_DICT_SIZE+address)){
+        iteration++;
         rehash=k%MAX_DICT_SIZE;
         if((dic[rehash].value==-3)&&(dic[rehash].prefix_code==-3) && (dic[rehash].suffix_char==(unsigned char)(-3))){
             dic[rehash].value=value;
@@ -162,6 +171,12 @@ void dictionary_add(int prefix, unsigned char character,int value)
         }
         k++;
     }
+    */
+    printf("empty entry is %d\n", empty);
+    dic[empty].value=value;
+    dic[empty].prefix_code=prefix;
+    dic[empty].suffix_char=character;
+    empty=-1;
     
 }
 
