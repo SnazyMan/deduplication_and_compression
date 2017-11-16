@@ -117,7 +117,7 @@ int dictionary_lookup(int prefix, unsigned char character)
     long temp = (prefix + (long)character+256);
 
     //4093 is the biggest prime less than 4096,hash calculation
-    int address = temp % 4093;
+    int address = temp*29 % 4093;
     //find this pair in dictionary at the exact address
     if((dic[address].prefix_code==prefix) && (dic[address].suffix_char==character)){
         ret = dic[address].value;
