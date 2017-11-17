@@ -9,12 +9,27 @@
 #include "io.h"
 #include "lzw.h"
 
-//#define STAGES (4)
 #define MAX_CHUNK_SIZE (8192)
 #define MIN_CHUNK_SIZE (512)
 
 int main()
 {
+
+    /********************          Allocate Memory        **************************/
+#ifdef __SDSCC__	
+    unsigned char *Input = (unsigned char*)sds_alloc(INPUT_SIZE);
+    unsigned char *Output = (unsigned char*)sds_alloc(OUTPUT_SIZE);
+    if (Input == NULL || Output == NULL) {
+        puts("Memory allocation error");
+        return -1;
+    }
+    
+    int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
+    int *ChunkLength = (int*)sds_alloc(MaxChunkNumber);
+    int hisTableSize = INPUT_SIZE / MIN_CHUNK_SIZE * 32;
+    unsigned char *historytable = (unsigned char*)sds_alloc(hisTableSize);
+    
+#else
     unsigned char *Input = (unsigned char*)malloc(INPUT_SIZE);
     unsigned char *Output = (unsigned char*)malloc(OUTPUT_SIZE);
     if (Input == NULL || Output == NULL) {
@@ -26,11 +41,11 @@ int main()
     int *ChunkLength = (int*)malloc(MaxChunkNumber);
     int hisTableSize = INPUT_SIZE / MIN_CHUNK_SIZE * 32;
     unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
-
-    memset(Output, 0, OUTPUT_SIZE);
     
-    /***********************           Loading Data             *********************/
+#endif
+    memset(Output, 0, OUTPUT_SIZE);
 
+    /***********************           Loading Data             *********************/
    
 // Mount FAT filesystem on SD card
 #ifdef __SDSCC__
@@ -44,7 +59,7 @@ int main()
 	
     load_data(Input);
 
-    /***********************            4 Stages             *********************/
+    /***********************            Compress               *********************/
     
     int ChunkNumber = 0;
     int PreviousLength = 0;
@@ -97,14 +112,22 @@ int main()
 
      /***********************           Storing Data             *********************/
     
-    //store_data("OUT.bin", Output, PreviousCompressedLength);
-    store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
+    store_data("OUT.bin", Output, PreviousCompressedLength);
+    //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
     //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
-    
+
+#ifdef __SDSCC__
+    sds_free(Input);
+    sds_free(Output);
+    sds_free(ChunkLength);
+    sds_free(historytable);
+#else
     free(Input);
     free(Output);
     free(ChunkLength);
     free(historytable);
+#endif
+    
     Input =NULL;
     Output=NULL;
     ChunkLength=NULL;
