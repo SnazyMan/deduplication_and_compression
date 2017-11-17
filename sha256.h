@@ -22,8 +22,8 @@ struct sha256_ctx {
 	uint32_t h[8]; // h0-h7 : h0 || h1 ... || h7 = digest
 };	
 	
-int sha256(unsigned char *input_chunk, unsigned int chunk_length, unsigned char *digest);
+int sha256(unsigned char input_chunk[8192], unsigned int chunk_length, unsigned char digest[32]);
 void sha256_init(struct sha256_ctx *ctx);
-void sha256_update(struct sha256_ctx *ctx, const unsigned char *data, size_t len);
-void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data);
-void sha256_final(struct sha256_ctx *ctx, unsigned char *hash);
+void sha256_update(struct sha256_ctx *ctx, const unsigned char data[8192], size_t len);
+void sha256_transform(struct sha256_ctx *ctx, const unsigned char data[64]);
+void sha256_final(struct sha256_ctx *ctx, unsigned char hash[32]);
