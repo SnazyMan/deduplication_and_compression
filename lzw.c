@@ -207,9 +207,6 @@ int write_code_word(unsigned char *out_stream, int code, const unsigned char cod
     if (n_leftover == 0) {
         n_leftover = code_len % CHAR_BITS;
         leftover = code << (CHAR_BITS - n_leftover);
-        if (code_len == 16) {
-            out_stream[out_index++] =  ((code >> n_leftover) & 0x0000FF00) >> 8;
-        }
         out_stream[out_index++] = (code >> n_leftover) & 0x000000FF;
     }
     else {
@@ -246,17 +243,16 @@ int write_code_word(unsigned char *out_stream, int code, const unsigned char cod
         // Save compressed length for other functions in higher stack frames
         *compressed_length = out_index;
         
-        
         // move from bit position 0-32 to 1-32
         header = (out_index - 4) << 1;
         // zero out bottom bit
         header &= 0xFFFFFFFE;
-        out_stream[0] = (unsigned char)(header & 0x000000FF);
+        out_stream[0] = (unsigned char) (header & 0x000000FF);
         out_stream[1] = (unsigned char)((header & 0x0000FF00) >> 8);
         out_stream[2] = (unsigned char)((header & 0x00FF0000) >> 16);
         out_stream[3] = (unsigned char)((header & 0xFF000000) >> 24);
         
-        // Reset static variables for new chunk to zero
+        // Reset static variables for new chunk
         out_index = 4;
         leftover = 0;
         n_leftover = 0;
