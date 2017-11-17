@@ -33,7 +33,7 @@ static const uint32_t k[64] = {
  * Note that ARM is little endian, which is somewhat important
  * for this algorithm
  */
-int sha256(unsigned char *input_chunk, unsigned int chunk_length, unsigned char *digest)
+int sha256(unsigned char input_chunk[8192], unsigned int chunk_length, unsigned char digest[32])
 {
 	struct sha256_ctx ctx;
 	
@@ -95,8 +95,10 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 	uint32_t a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
+#pragma HLS unroll
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	for ( ; i < 64; ++i)
+#pragma HLS unroll
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
 	a = ctx->h[0];
@@ -109,6 +111,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 	h = ctx->h[7];
 
 	for (i = 0; i < 64; ++i) {
+#pragma pipeline II=1
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;
@@ -132,7 +135,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 }
 
 /* Function to handle last partial block */
-void sha256_final(struct sha256_ctx *ctx, unsigned char *hash)
+void sha256_final(struct sha256_ctx *ctx, unsigned char hash[32])
 {
 	uint32_t i;
 
@@ -149,7 +152,10 @@ void sha256_final(struct sha256_ctx *ctx, unsigned char *hash)
 		while (i < 64)
 			ctx->data[i++] = 0x00;
 		sha256_transform(ctx, ctx->data);
-		memset(ctx->data, 0, 56);
+
+		for (int k = 0; k < 56; k++) {
+			ctx->data[k] = 0;
+		}
 	}
 
 	// Append to the padding the total message's length in bits and transform.

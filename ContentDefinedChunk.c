@@ -1,24 +1,24 @@
+#include <stdio.h>
 #include <math.h>
 #include "ContentDefinedChunk.h"
 
 #define WINDOW_SIZE (16)
 #define PRIME (23)
 #define CHUNK_AVERAGE_SIZE (12)
-#define MAX_CHUNK_SIZE 8192 //bytes
-#define MIN_CHUNK_SIZE (512)
+#define MAX_CHUNK_SIZE 8192 // Bytes
+#define MIN_CHUNK_SIZE (512) // Bytes
 #define FINGERPRINT_BITS (64)
 
 void ContentDefinedChunk(const unsigned char *Input, unsigned int *ChunkLength,
 			 unsigned int *ChunkNumber, int in_len)
 {
-
     long Modulus = (long)pow(2, FINGERPRINT_BITS);
     long POW = ((long)pow(PRIME, WINDOW_SIZE)) % Modulus;
     long rollhash = 0;
     unsigned int j = 0;
     unsigned int chunklength = WINDOW_SIZE;
     
-    for (int i = 0; i < (in_len - WINDOW_SIZE); i++) {
+    for (int i = (MIN_CHUNK_SIZE -1); i < (in_len - WINDOW_SIZE); i++) {
         rollhash = (rollhash * PRIME + Input[i + WINDOW_SIZE] - Input[i] * POW) % Modulus;
 	
         chunklength++;
