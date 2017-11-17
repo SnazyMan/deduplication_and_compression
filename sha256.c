@@ -98,7 +98,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 #pragma HLS unroll
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	for ( ; i < 64; ++i)
-#pragma HLS unroll
+#pragma pipeline II=1
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
 	a = ctx->h[0];
