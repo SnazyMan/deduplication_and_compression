@@ -12,6 +12,8 @@
 #define MAX_CHUNK_SIZE (8192)
 #define MIN_CHUNK_SIZE (512)
 
+unsigned long long collisionCount = 0;
+
 int main()
 {
 
@@ -26,7 +28,9 @@ int main()
     
     int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
     int *ChunkLength = (int*)sds_alloc(MaxChunkNumber);
-    int hisTableSize = INPUT_SIZE / MIN_CHUNK_SIZE * 32;
+    // 34 bytes wide (32 byte digest, 2 byte index + valid bit) * (2 ^15) entries)
+    // rounded up to nearest prime
+    int hisTableSize = 1114112; //INPUT_SIZE / MIN_CHUNK_SIZE * 32;
     unsigned char *historytable = (unsigned char*)sds_alloc(hisTableSize);
     
 #else
@@ -39,10 +43,12 @@ int main()
     
     int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
     int *ChunkLength = (int*)malloc(MaxChunkNumber);
-    int hisTableSize = INPUT_SIZE / MIN_CHUNK_SIZE * 32;
+    // 34 bytes wide (32 byte digest, 2 byte index + valid bit) * (2 ^15) entries)
+    int hisTableSize = 1114112; //INPUT_SIZE / MIN_CHUNK_SIZE * 32;
     unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
     
 #endif
+    memset(historytable, 0, hisTableSize);
     memset(Output, 0, OUTPUT_SIZE);
 
     /***********************           Loading Data             *********************/
@@ -70,12 +76,16 @@ int main()
     int CompressedLength = 0;
     int PreviousCompressedLength = 0;
 
+    // Matching test code
+//    unsigned char *input = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstuabcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstpabcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
+    
     // Stage 1
     ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
-
+    //ChunkNumber = 3;
     // Stage 2-4, sent the chunks one by one to other stages
     for (int k = 0; k < ChunkNumber; k++) {
 
+	    //ChunkLength[k] = 112;
         // Stage 2 : SHA stage
         sha256(Input + PreviousLength, ChunkLength[k], digest);
         
@@ -135,6 +145,7 @@ int main()
     printf("The total number of chunks is %d\n", ChunkNumber);
     printf("The number of LZW chunks is %d\n", LZWChunkNumber);
     printf("the number of duplicate chunks is %d\n",ChunkNumber-LZWChunkNumber);
+    printf("Number of collided chunks is %llu\n", collisionCount);
     puts("Application completed successfully.");
 
     return 0;
