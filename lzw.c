@@ -5,13 +5,16 @@
 
 // declare the dictionary
 struct dict_node dic[MAX_DICT_SIZE];
-int iteration = 0;
 int empty = -1;
+int gDictInit = 0;
+
 /*
  * LZW encoding, takes a pointer to input chunk location and outputs
  * a pointer to the encoded chunk
  */
-int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int * compressed_chunk_lenghth)
+#pragma SDS data mem_attribute(in_chunk:PHYSICAL_CONTIGUOUS, out_chunk:PHYSICAL_CONTIGUOUS)
+#pragma SDS data access_pattern(in_chunk:SEQUENTIAL, out_chunk:SEQUENTIAL)
+void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT_SIZE], int chunk_length, int *compressed_chunk_lenghth)
 {
     int ret;
     int index = 0; //index incoming chunk
@@ -21,20 +24,9 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     unsigned int next_code; // next available code index
     unsigned char c; // character to add to string
     int last = 0; //false
-    //int empty=0;
-    // validate arguments
-    if ((in_chunk == 0) || (out_chunk == 0) || (chunk_length == 0)) {
-        //
-        //printf("Invalid argument to lzw\n");
-        return -1;
-    }
     
     // Initialize dict_root
-    ret = dict_init();
-    if (ret != 0) {
-        printf("Allocation error dict_root roots\n");
-        return -1;
-    }
+    dict_init();
     
     // start MIN_CODE_LEN bit code words
     // Which is 9 initially because the dict_root has 256 entries
@@ -48,27 +40,25 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     prefix = in_chunk[index++];
 
     // now encode normally
-
     while (index != chunk_length) {
+#pragma pipeline II=1
         // read the next byte from the chunk
         c = in_chunk[index++];
 
         // look for code + c in the dict_root
-       
         i = dictionary_lookup(prefix, c);
-        if (i != -1){
+        if (i != -1) {
             prefix = i;
         }
         else {
-
             // add to dict_root
-            if(next_code<MAX_DICT_SIZE){
-            dictionary_add(prefix, c,next_code);
+            if (next_code < MAX_DICT_SIZE) {
+            	dictionary_add(prefix, c, next_code);
             }
-            next_code++;
+            next_code++; // This is incorrect?
             
-	    // Check to see if dictionary size can be represented in code length
-            if ((next_code-1) >= CURRENT_MAX_CODES(current_code_len)) {
+            // Check to see if dictionary size can be represented in code length
+            if ((next_code - 1) >= CURRENT_MAX_CODES(current_code_len)) {
                 current_code_len++;
             }
 	    
@@ -80,104 +70,83 @@ int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int
     }
 
     // no more input.  write out last of the code
-    write_code_word(out_chunk, prefix, current_code_len, last = 1,compressed_chunk_lenghth);
-    printf("iteration times= %d\n",iteration);
-    printf("the total entry is %d\n",next_code);
-    iteration = 0;
-        return 0;
+    write_code_word(out_chunk, prefix, current_code_len, last = 1, compressed_chunk_lenghth);
 }
 
 /*
  * Initialize dict_root to contain 256 entries to the first 256 literals
  * A byte with value 27 would be encoded to 27
  */
-int dict_init()
+void dict_init()
 {
-    
-
     //initialize the first 256 entries.
-    for (int i = 0; i < 256; i++) {
-        dic[i].value = i;
-        dic[i].prefix_code = -1;
-        dic[i].suffix_char = (unsigned char)i;
+    // This needs to only happen once, hence the global variable
+    if (!gDictInit) {	
+        for (int i = 0; i < 256; i++) {
+	    dic[i].value = i;
+            dic[i].prefix_code = -1;
+            dic[i].suffix_char = (unsigned char)i;
+            dic[i].valid = 1;
+        }
+        gDictInit = 1;
     }
     //initialize the other entries
     for (int j = 256; j < MAX_DICT_SIZE; j++) {
         dic[j].value = -3;
         dic[j].prefix_code = -3;
         dic[j].suffix_char = (unsigned char)(-3);
-
+        dic[j].valid = 0;
     }
-    return 0;
 }
 
 int dictionary_lookup(int prefix, unsigned char character)
 {
-    int ret=-1;
-    long temp = (prefix + (long)character+256);
+    int ret = -1;
+    long temp = (prefix + (long)character + 256);
 
     //4093 is the biggest prime less than 4096,hash calculation
-    int address = (temp*29 & 4095)^4093;
-    //find this pair in dictionary at the exact address
-    if((dic[address].prefix_code==prefix) && (dic[address].suffix_char==character)){
-        ret = dic[address].value;
-    }
-    //don't find at this address & this address is still empty.
-    else if((dic[address].value == -3) && (dic[address].prefix_code==-3) && (dic[address].suffix_char==(unsigned char)(-3))){
-        empty=address;
-               ret = -1;
+    int address = (temp * 29 & 8191);
 
+    // If the address is invalid no entry, return immediately 
+    if (dic[address].valid == 0) {
+	empty = address;
+        return -1;
     }
-    //don't find & the address isn't empty
-    else{
-        int k=address;
-        int rehash=0;
-        while(k<(MAX_DICT_SIZE+address)){
-            iteration++;
+    
+    //find this pair in dictionary at the exact address
+    if ((dic[address].prefix_code == prefix) && (dic[address].suffix_char == character)) {    
+        ret = dic[address].value;
+        return ret;
+    }
+    else{ //don't find & the address isn't empty (rehash)
+        int k = address;
+        int rehash = 0;
+        while (k < (MAX_DICT_SIZE + address)) { // linear probe
             k++;
-            rehash=k%MAX_DICT_SIZE;
-            if((dic[rehash].prefix_code==prefix) && (dic[rehash].suffix_char==character)){
-                ret= dic[rehash].value;
+            rehash = k % MAX_DICT_SIZE;
+            if (dic[rehash].valid == 0) {
+            	empty = rehash;
+            	return -1;
+            }
+            if ((dic[rehash].prefix_code == prefix) && (dic[rehash].suffix_char == character)) {
+                ret = dic[rehash].value;
                 break;
             }
-            else if((dic[rehash].value == -3) &&(dic[rehash].prefix_code==-3) && (dic[rehash].suffix_char==(unsigned char)(-3))){
-                empty=rehash;
-                ret= -1;
-                break;
-            }
-            else{
-                ret= -1;
+            else {
+            	// This case would be for if the dictionary is full
+                ret = -1;
             }
         }
     }
     return ret;
 }
-void dictionary_add(int prefix, unsigned char character,int value)
+void dictionary_add(int prefix, unsigned char character, int value)
 {
-    /*
-    long temp = (prefix + (long)character+256);
-    int address = temp % 4093;
-
-    int k=address;
-    int rehash=0;
-    while(k<=(MAX_DICT_SIZE+address)){
-        iteration++;
-        rehash=k%MAX_DICT_SIZE;
-        if((dic[rehash].value==-3)&&(dic[rehash].prefix_code==-3) && (dic[rehash].suffix_char==(unsigned char)(-3))){
-            dic[rehash].value=value;
-            dic[rehash].prefix_code=prefix;
-            dic[rehash].suffix_char=character;
-            break;
-        }
-        k++;
-    }
-    */
-    printf("empty entry is %d\n", empty);
-    dic[empty].value=value;
-    dic[empty].prefix_code=prefix;
-    dic[empty].suffix_char=character;
-    empty=-1;
-    
+    dic[empty].value = value;
+    dic[empty].prefix_code = prefix;
+    dic[empty].suffix_char = character;
+    dic[empty].valid = 1;
+    empty = -1;
 }
 
 
@@ -191,7 +160,7 @@ void dictionary_add(int prefix, unsigned char character,int value)
  * The next code word will be packed into the stream changing the second byte to:
  * x8,x7,x6,x5,x4,x3,x2,x1 and x0,y8,y7,y6,y5,y4,y3,y2 and so it on
  */
-int write_code_word(unsigned char *out_stream, int code, const unsigned char code_len, int last, int *compressed_length)
+void write_code_word(unsigned char out_stream[MAX_DICT_SIZE], int code, const unsigned char code_len, int last, int *compressed_length)
 {
     // We start at 4 to give room for 32b header for each chunk
     static int out_index = 4;
@@ -257,7 +226,4 @@ int write_code_word(unsigned char *out_stream, int code, const unsigned char cod
         leftover = 0;
         n_leftover = 0;
     }
-    
-    // Are there failure conditions?
-    return 0;
 }
