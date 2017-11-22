@@ -26,10 +26,10 @@ struct dict_node {
 };
 
 // write encoded data
-void write_code_word(unsigned char *out_chunk, int code, const unsigned char code_len, int last, int *compressed_length);
+void write_code_word(unsigned char out_stream[MAX_DICT_SIZE], int code, const unsigned char code_len, int last, int *compressed_length);
 
 // LZW encoder
-void lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length,int * compressed_chunk_lenghth);
+void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT_SIZE], int chunk_length, int *compressed_chunk_lenghth);
 
 // Dictionary initialization
 void dict_init();

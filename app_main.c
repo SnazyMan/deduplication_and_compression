@@ -1,51 +1,111 @@
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <math.h>
 #include <string.h>
+#include "io.h"
 #include "sha256.h"
 #include "ContentDefinedChunk.h"
 #include "Matching.h"
-#include "io.h"
 #include "lzw.h"
 
 #define MAX_CHUNK_SIZE (8192)
 #define MIN_CHUNK_SIZE (512)
 
-unsigned long long collisionCount = 0;
+unsigned char *Input;
+unsigned char *Output;
+int *ChunkLength;
+unsigned char *historytable;
+int LZWChunkNumber = 0;
+int ChunkNumber = 0;
+
+#pragma SDS data access_pattern(Input:SEQUENTIAL, Output:SEQUENTIAL)
+#pragma SDS data mem_attribute(Input:PHYSICAL_CONTIGUOUS, Output:PHYSICAL_CONTIGUOUS)
+int compress(unsigned char Input[INPUT_SIZE], unsigned char Output[OUTPUT_SIZE])
+{
+
+    int PreviousLength = 0;
+    unsigned char digest[32];
+    int index = 0;
+    int deduplicate = 0;
+    int CompressedLength = 0;
+    int PreviousCompressedLength = 0;
+    int chunk_length = 0;
+
+    while (PreviousLength < (INPUT_SIZE - WINDOW_SIZE - 1)) {
+#pragma HLS DATAFLOW
+    	// Stage 1 : Content defined Chunk
+    	chunk_length = ContentDefinedChunk(Input + PreviousLength);
+	
+        // Stage 2 : SHA stage
+        sha256(Input + PreviousLength, chunk_length, digest);
+
+        // Stage 3 : Matching stage
+        Matching(digest, historytable, &LZWChunkNumber, &deduplicate, &index);
+        
+        // If the chunk come out from matching stage is not a duplicate
+        if (deduplicate == 0) {
+            lzw(Input + PreviousLength, Output + PreviousCompressedLength,
+                chunk_length, &CompressedLength);
+            PreviousCompressedLength += CompressedLength;
+        }
+        else {
+            //if it's duplicate, add the header to the duplicate chunk
+            unsigned char *temp = Output + PreviousCompressedLength;
+            index <<= 1;
+            
+            index |= 1;
+            
+            temp[0] = (unsigned char) (index & 0x000000FF);
+            temp[1] = (unsigned char)((index & 0x0000FF00) >> 8);
+            temp[2] = (unsigned char)((index & 0x00FF0000) >> 16);
+            temp[3] = (unsigned char)((index & 0xFF000000) >> 24);
+            PreviousCompressedLength += 4;
+
+	    // Reset deduplicate for next chunk
+	    deduplicate = 0;
+        }
+
+        // keep track of where we are in the input
+        PreviousLength += chunk_length;
+	
+	// For statistics on content defined chunking
+        ChunkNumber++;
+    }
+    
+    return PreviousCompressedLength;
+}
 
 int main()
 {
 
     /********************          Allocate Memory        **************************/
 #ifdef __SDSCC__	
-    unsigned char *Input = (unsigned char*)sds_alloc(INPUT_SIZE);
-    unsigned char *Output = (unsigned char*)sds_alloc(OUTPUT_SIZE);
+    Input = (unsigned char*)sds_alloc(INPUT_SIZE);
+    Output = (unsigned char*)sds_alloc(OUTPUT_SIZE);
     if (Input == NULL || Output == NULL) {
         puts("Memory allocation error");
         return -1;
     }
     
     int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
-    int *ChunkLength = (int*)sds_alloc(MaxChunkNumber);
-    // 34 bytes wide (32 byte digest, 2 byte index + valid bit) * (2 ^15) entries)
-    // rounded up to nearest prime
-    int hisTableSize = 1114112; //INPUT_SIZE / MIN_CHUNK_SIZE * 32;
-    unsigned char *historytable = (unsigned char*)sds_alloc(hisTableSize);
+    ChunkLength = (int*)sds_alloc(MaxChunkNumber);
+    // 34 bytes wide (32 byte digest, 2 byte index + valid bit) * (2 ^15) entries
+    int hisTableSize = 1114112;
+    historytable = (unsigned char*)sds_alloc(hisTableSize);
     
 #else
-    unsigned char *Input = (unsigned char*)malloc(INPUT_SIZE);
-    unsigned char *Output = (unsigned char*)malloc(OUTPUT_SIZE);
+    Input = (unsigned char*)malloc(INPUT_SIZE);
+    Output = (unsigned char*)malloc(OUTPUT_SIZE);
     if (Input == NULL || Output == NULL) {
         puts("Memory allocation error");
         return -1;
     }
     
     int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
-    int *ChunkLength = (int*)malloc(MaxChunkNumber);
+    ChunkLength = (int*)malloc(MaxChunkNumber);
     // 34 bytes wide (32 byte digest, 2 byte index + valid bit) * (2 ^15) entries)
-    int hisTableSize = 1114112; //INPUT_SIZE / MIN_CHUNK_SIZE * 32;
-    unsigned char *historytable = (unsigned char*)malloc(hisTableSize);
+    int hisTableSize = 1114112;
+    historytable = (unsigned char*)malloc(hisTableSize);
     
 #endif
     memset(historytable, 0, hisTableSize);
@@ -66,65 +126,17 @@ int main()
     load_data(Input);
 
     /***********************            Compress               *********************/
+
+    int compressedLength = 0;
+    compressedLength = compress(Input, Output);
+
+    printf("The total number of chunks is %d\n", ChunkNumber);
+    printf("The number of LZW chunks is %d\n", LZWChunkNumber);
+    printf("the number of duplicate chunks is %d\n", ChunkNumber - LZWChunkNumber);
+
+    /***********************           Storing Data             *********************/
     
-    int ChunkNumber = 0;
-    int PreviousLength = 0;
-    unsigned char digest[32];
-    int index = 0;
-    int LZWChunkNumber = 0;
-    int deduplicate = 0;
-    int CompressedLength = 0;
-    int PreviousCompressedLength = 0;
-
-    // Matching test code
-//    unsigned char *input = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstuabcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstpabcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
-    
-    // Stage 1
-    ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
-    //ChunkNumber = 3;
-    // Stage 2-4, sent the chunks one by one to other stages
-    for (int k = 0; k < ChunkNumber; k++) {
-
-	    //ChunkLength[k] = 112;
-        // Stage 2 : SHA stage
-        sha256(Input + PreviousLength, ChunkLength[k], digest);
-        
-        //Stage 3 : Matching stage
-        Matching(digest, historytable, &LZWChunkNumber, &deduplicate, &index);
-        
-        //if the chunk come out from matching stage is not a duplicate
-        if (deduplicate == 0) {
-            lzw(Input + PreviousLength, Output + PreviousCompressedLength,
-		ChunkLength[k], &CompressedLength);
-	    PreviousCompressedLength += CompressedLength;
-        }
-        else {
-            //if it's duplicate
-            //add the header to the duplicate chunk
-            unsigned char *temp = Output + PreviousCompressedLength;
-            index <<= 1;
-            
-            index |= 1;
-            
-            temp[0] = (unsigned char) (index & 0x000000FF);
-            temp[1] = (unsigned char)((index & 0x0000FF00) >> 8);
-            temp[2] = (unsigned char)((index & 0x00FF0000) >> 16);
-            temp[3] = (unsigned char)((index & 0xFF000000) >> 24);
-            PreviousCompressedLength += 4;
-
-	    // Reset deduplicate for next chunk
-	    deduplicate = 0;
-        }
-        
-        PreviousLength += ChunkLength[k];
-    }
-
-
-     /***********************           Storing Data             *********************/
-    
-    store_data("OUT.bin", Output, PreviousCompressedLength);
-    //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
-    //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
+    store_data("OUT.bin", Output, compressedLength);
 
 #ifdef __SDSCC__
     sds_free(Input);
@@ -138,15 +150,6 @@ int main()
     free(historytable);
 #endif
     
-    Input =NULL;
-    Output=NULL;
-    ChunkLength=NULL;
-    historytable=NULL;
-    printf("The total number of chunks is %d\n", ChunkNumber);
-    printf("The number of LZW chunks is %d\n", LZWChunkNumber);
-    printf("the number of duplicate chunks is %d\n",ChunkNumber-LZWChunkNumber);
-    printf("Number of collided chunks is %llu\n", collisionCount);
-    puts("Application completed successfully.");
-
     return 0;
 }
+

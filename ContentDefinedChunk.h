@@ -8,8 +8,10 @@
 
 #ifndef ContentDefinedChunk_h
 #define ContentDefinedChunk_h
+#include "io.h"
 
-void ContentDefinedChunk(const unsigned char * Input, unsigned int * ChunkLength,
-			 unsigned int *ChunkNumber, int in_len);
+#define WINDOW_SIZE (16)
+
+int ContentDefinedChunk(const unsigned char Input[INPUT_SIZE]);
 
 #endif /* ContentDefinedChunk_h */

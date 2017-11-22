@@ -13,10 +13,8 @@ int gDictInit = 0;
  * a pointer to the encoded chunk
  */
 #pragma SDS data mem_attribute(in_chunk:PHYSICAL_CONTIGUOUS, out_chunk:PHYSICAL_CONTIGUOUS)
-#pragma SDS data access_pattern(in_chunk:SEQUENTIAL, out_chunk:SEQUENTIAL)
 void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT_SIZE], int chunk_length, int *compressed_chunk_lenghth)
 {
-    int ret;
     int index = 0; //index incoming chunk
     int i = -1; // index dict_root list
     int prefix; // code for current string
@@ -25,7 +23,7 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
     unsigned char c; // character to add to string
     int last = 0; //false
     
-    // Initialize dict_root
+    // Initialize dictionary
     dict_init();
     
     // start MIN_CODE_LEN bit code words
@@ -41,7 +39,6 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
 
     // now encode normally
     while (index != chunk_length) {
-#pragma pipeline II=1
         // read the next byte from the chunk
         c = in_chunk[index++];
 
@@ -53,11 +50,11 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
         else {
             // add to dict_root
             if (next_code < MAX_DICT_SIZE) {
-            	dictionary_add(prefix, c, next_code);
+	        dictionary_add(prefix, c, next_code);
             }
-            next_code++; // This is incorrect?
+            next_code++; // This is incorrect, 
             
-            // Check to see if dictionary size can be represented in code length
+	    // Check to see if dictionary size can be represented in code length
             if ((next_code - 1) >= CURRENT_MAX_CODES(current_code_len)) {
                 current_code_len++;
             }
@@ -86,16 +83,16 @@ void dict_init()
 	    dic[i].value = i;
             dic[i].prefix_code = -1;
             dic[i].suffix_char = (unsigned char)i;
-            dic[i].valid = 1;
-        }
-        gDictInit = 1;
+	    dic[i].valid = 1;
+	}
+	gDictInit = 1;
     }
     //initialize the other entries
     for (int j = 256; j < MAX_DICT_SIZE; j++) {
         dic[j].value = -3;
         dic[j].prefix_code = -3;
         dic[j].suffix_char = (unsigned char)(-3);
-        dic[j].valid = 0;
+	dic[j].valid = 0;
     }
 }
 
@@ -111,12 +108,12 @@ int dictionary_lookup(int prefix, unsigned char character)
     if (dic[address].valid == 0) {
 	empty = address;
         return -1;
-    }
+   }
     
     //find this pair in dictionary at the exact address
     if ((dic[address].prefix_code == prefix) && (dic[address].suffix_char == character)) {    
         ret = dic[address].value;
-        return ret;
+	return ret;
     }
     else{ //don't find & the address isn't empty (rehash)
         int k = address;
@@ -124,20 +121,21 @@ int dictionary_lookup(int prefix, unsigned char character)
         while (k < (MAX_DICT_SIZE + address)) { // linear probe
             k++;
             rehash = k % MAX_DICT_SIZE;
-            if (dic[rehash].valid == 0) {
-            	empty = rehash;
-            	return -1;
-            }
+	    if (dic[rehash].valid == 0) {
+		empty = rehash;
+		return -1;
+	    }
             if ((dic[rehash].prefix_code == prefix) && (dic[rehash].suffix_char == character)) {
                 ret = dic[rehash].value;
                 break;
             }
             else {
-            	// This case would be for if the dictionary is full
+		// This case would be for if the dictionary is full    
                 ret = -1;
             }
         }
     }
+    
     return ret;
 }
 void dictionary_add(int prefix, unsigned char character, int value)
