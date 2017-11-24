@@ -168,7 +168,7 @@ int main()
     compressedLength = compress(Input, Output);
     unsigned long long end = sds_clock_counter();
     printf("cycles = %llu\n", end - start);
-#elseif
+#else
     compressedLength = compress(Input, Output);
 #endif
     
