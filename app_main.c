@@ -24,17 +24,13 @@ int compress(unsigned char *Input, unsigned char *Output)
     int CompressedLength = 0; // Compressed length of a chunk from lzw
     int PreviousCompressedLength = 0; // Keeps track of where we are in the Output buffer across multiple iterations
     int chunk_length = 0; // holds length of chunk
-//    unsigned char digest_tb[32] = {0xcd, 0xb2, 0xc3, 0xb8, 0x73, 0x3d, 0xa5, 0xf4, 0x4a, 0xb7,
-//    		0x15, 0x20, 0x10, 0xb3, 0xa2, 0xd9, 0x48, 0x38, 0xd9, 0xba, 0xc3, 0x10, 0x4, 0x6f,
-//			0x9c, 0xc8, 0x9e,
-//   		0x77, 0x7e, 0xdd, 0x77, 0x13};
 
-//    int good = 0;
-
+#ifdef __SDSCC__
     // Precalculate a chunk so that chunking/digest to enable concurrency
-	chunk_digest(Input + chunk_acc, digest, &chunk_length);
-	chunk_acc = chunk_length;
-
+    chunk_digest(Input + chunk_acc, digest, &chunk_length);
+    chunk_acc = chunk_length;
+#endif
+    
     while (chunk_acc < (INPUT_SIZE - WINDOW_SIZE - 1)) {
 	    
     	// Stage 1 & 2
@@ -42,22 +38,6 @@ int compress(unsigned char *Input, unsigned char *Output)
 #pragma SDS async(1);
     	chunk_digest(Input + chunk_acc, digest, &chunk_length);
 
-#if(0)
-    	int k;
-    	for (k = 0; k < 32;  k++) {
-    		if (digest[k] == digest_tb[k]) {
-    			good = 1;
-    		}
-    		else {
-    			good = 0;
-    			return 1;
-    		}
-    	}
-
-    	if (good == 1) {
-    		return 0;
-    	}
-#endif
         // Stage 3 : Matching stage
     	// Start Matching/Compression on (previous) chunk
     	// Potential timing issue on digest it could be updated with next chunk before it starts, (I think unlikely)
@@ -98,14 +78,15 @@ int compress(unsigned char *Input, unsigned char *Output)
         // At this point chunk/sha is guarenteed to be finished, update Input position
     	chunk_acc += chunk_length;
     }
-    
+
+#ifdef __SDSCC__    
     //Preform final Matching
     Matching(digest, historytable, &LZWChunkNumber, &deduplicate, &index);
 
     // If the chunk come out from matching stage is not a duplicate
     if (deduplicate == 0) {
     	lzw(Input + PreviousLength, Output + PreviousCompressedLength,
-    			chunk_length, &CompressedLength);
+            chunk_length, &CompressedLength);
     	PreviousCompressedLength += CompressedLength;
     }
     else {
@@ -124,7 +105,8 @@ int compress(unsigned char *Input, unsigned char *Output)
         // Reset deduplicate for next chunk
         deduplicate = 0;
     }
-
+#endif
+    
     return PreviousCompressedLength;
 }
 
@@ -181,19 +163,15 @@ int main()
     /***********************            Compress               *********************/
 
     int compressedLength = 0;
+#ifdef __SDSCC__
     unsigned long long start = sds_clock_counter();
     compressedLength = compress(Input, Output);
     unsigned long long end = sds_clock_counter();
     printf("cycles = %llu\n", end - start);
-
-#if(0)
-    if (compressedLength == 1) {
-    	return 1;
-    }
-    else if (compressedLength == 0) {
-    	return 0;
-    }
+#elseif
+    compressedLength = compress(Input, Output);
 #endif
+    
     printf("The total number of chunks is %d\n", ChunkNumber);
     printf("The number of LZW chunks is %d\n", LZWChunkNumber);
     printf("the number of duplicate chunks is %d\n", ChunkNumber - LZWChunkNumber);
