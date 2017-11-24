@@ -1,7 +1,7 @@
 #include "Matching.h"
 
-#pragma SDS data mem_attribute(historytable:PHYSICAL_CONTIGUOUS, digest:PHYSICAL_CONTIGUOUS)
-void Matching(unsigned char digest[32], unsigned char historytable[1114112], int *LZWChunkNumber, int *deduplicate, int *index)
+#pragma SDS data mem_attribute(historytable:PHYSICAL_CONTIGUOUS)
+void Matching(unsigned char digest[32], unsigned char historytable[1114112], int *LZWChunkNumber, char *deduplicate, int *index)
 {
     // Calculate hash for incoming digest
     unsigned int curHash = hash(digest);
@@ -35,7 +35,8 @@ void Matching(unsigned char digest[32], unsigned char historytable[1114112], int
     	insert(curHash, historytable, digest, LZWChunkNumber);
     	*deduplicate = 0;
     }
-}    
+}
+
 /*
  * Compute hash on digest 
  * For now, the hash function will be bitwise xor
@@ -49,7 +50,8 @@ unsigned int hash(unsigned char digest[32])
     // function may be revisted, it does operate on all bits of input key which is good
     // shifting like this may be unbalanced
     // decent amount of computational complexity for software here...
-    for (int i = 0; i < 16; i++) {
+    int i;
+    for (i = 0; i < 16; i++) {
         hash ^= (digest[i] ^ digest[32 - i]) << i;
     }
 
@@ -60,7 +62,7 @@ unsigned int hash(unsigned char digest[32])
 }
 
 //  Perform a linear probe until an empty entry is found
-unsigned int rehash(unsigned int curHash, unsigned char historytable[1114112], unsigned char digest[32], int *deduplicate, int *index)
+unsigned int rehash(unsigned int curHash, unsigned char historytable[1114112], unsigned char digest[32], char *deduplicate, int *index)
 {
     int rehash = curHash;
 
@@ -106,3 +108,4 @@ void insert(unsigned int curHash, unsigned char historytable[1114112], unsigned 
     
     (*LZWChunkNumber)++;
 }
+

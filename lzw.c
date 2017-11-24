@@ -135,7 +135,7 @@ int dictionary_lookup(int prefix, unsigned char character)
             }
         }
     }
-    
+
     return ret;
 }
 void dictionary_add(int prefix, unsigned char character, int value)
