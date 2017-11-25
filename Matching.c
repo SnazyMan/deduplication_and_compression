@@ -18,7 +18,7 @@ void Matching(unsigned char digest[32], unsigned char historytable[1114112], int
     	}
     	// if there wasn't a collision, return the index
     	if (equal == 32) {
-    		*index = (historytable[curHash + j] | historytable[curHash + j + 1]) >> 1;
+    		*index = (((int)historytable[curHash + j] << 8) | historytable[curHash + j + 1]) >> 1;
     		*deduplicate = 1;
     	}
     	else { // linear probe to find empty entry or return match
@@ -82,7 +82,7 @@ unsigned int rehash(unsigned int curHash, unsigned char historytable[1114112], u
     		}
     		// if chunk was found, return the index
     		if (equal == 32) {
-    			*index = (historytable[rehash + j] | historytable[rehash + j + 1]) >> 1;
+    			*index = (((int)historytable[rehash + j] << 8) | historytable[rehash + j + 1]) >> 1;
     			*deduplicate = 1;
     			return rehash;
     		}
