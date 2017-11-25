@@ -52,7 +52,7 @@ unsigned int hash(unsigned char digest[32])
     // decent amount of computational complexity for software here...
     int i;
     for (i = 0; i < 16; i++) {
-        hash ^= (digest[i] ^ digest[32 - i]) << i;
+        hash ^= (digest[i] ^ digest[31 - i]) << i;
     }
 
     hash = hash % 32768;
