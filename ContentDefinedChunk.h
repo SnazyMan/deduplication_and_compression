@@ -4,10 +4,12 @@
 #include "io.h"
 
 #define MAX_CHUNK_SIZE 8192 // Bytes
-#define MIN_CHUNK_SIZE (512) // Bytes
+#define MIN_CHUNK_SIZE 512 // Bytes
 
-#define WINDOW_SIZE (16)
+#define WINDOW_SIZE 16
 
 int ContentDefinedChunk(const unsigned char Input[MAX_CHUNK_SIZE] , unsigned char Output[MAX_CHUNK_SIZE]);
+
+void fill_irp_table();
 
 #endif /* ContentDefinedChunk_h */
