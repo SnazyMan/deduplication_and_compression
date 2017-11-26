@@ -9,7 +9,7 @@
 
 #define MIN_CODE_LEN    9                   // min # bits in a code word
 #define MAX_CODE_LEN    20                  // max # bits in a code word
-#define MAX_DICT_SIZE   4095
+#define MAX_DICT_SIZE   8192
 #define CHAR_BITS       8
 
 #define FIRST_CODE      0                   // value of 1st string code 
@@ -19,19 +19,20 @@
 
 // node in dictionary list 
 struct dict_node {
-    unsigned int value; //position in the list
-	unsigned char suffix_char;   // last char in encoded string
-	unsigned int prefix_code;    // code for remaining chars in string
+    unsigned int value; //position in the list [ONLY NEEDS log2(MAX_CHUNK_SIZE) bits]
+    unsigned char suffix_char; // last char in encoded string 
+    unsigned int prefix_code; // code for remaining chars in string [ONLY NEEDS log2(MAX_CHUNK_SIZE) bits]
+    char valid; // a byte (only really need a bit) to signify an empty entry
 };
 
 // write encoded data
-int write_code_word(unsigned char *out_chunk, int code, const unsigned char code_len, int last, int *compressed_length);
+void write_code_word(unsigned char out_stream[MAX_DICT_SIZE], int code, const unsigned char code_len, int last, int *compressed_length);
 
 // LZW encoder
-int lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length,int * compressed_chunk_lenghth);
+void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT_SIZE], int chunk_length, int *compressed_chunk_lenghth);
 
 // Dictionary initialization
-int dict_init();
+void dict_init();
 
 // Check if current string is in dictionary
 int dictionary_lookup(int prefix, unsigned char character);
