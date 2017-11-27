@@ -1,25 +1,15 @@
-//
-//  Matching.h
-//  testfile
-//
-//  Created by 吱吱吱呀 on 2017/11/7.
-//  Copyright © 2017年 RenzhiHuang. All rights reserved.
-//
-
 #ifndef Matching_h
 #define Matching_h
 
 #include <stdio.h>
 
-void Matching(unsigned char *digest, unsigned char *historytable, int *LZWChunkNumber,
-	      int *deduplicate, int *index);
+void Matching(unsigned char digest[32], unsigned char historytable[1114112], int *LZWChunkNumber, char *deduplicate, int *index);
 
-unsigned int hash(unsigned char *digest);
-unsigned int rehash(unsigned int curHash, unsigned char *historytable, unsigned char *digest,
-		    int *deduplicate, int *index);
 
-void insert(unsigned int curHash, unsigned char *historytable, unsigned char *digest,
-	    int *LZWChunkNumber);
+unsigned int hash(unsigned char digest[32]);
+unsigned int rehash(unsigned int curHash, unsigned char historytable[1114112], unsigned char digest[32],
+		    char *deduplicate, int *index);
 
+void insert(unsigned int curHash, unsigned char historytable[1114112], unsigned char digest[32], int *LZWChunkNumber);
 #endif /* Matching_h */
 

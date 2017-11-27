@@ -33,22 +33,15 @@ static const uint32_t k[64] = {
  * Note that ARM is little endian, which is somewhat important
  * for this algorithm
  */
-int sha256(unsigned char input_chunk[8192], unsigned int chunk_length, unsigned char digest[32])
+#pragma SDS data access_pattern(input_chunk:SEQUENTIAL)
+void sha256(unsigned char input_chunk[8192], unsigned int chunk_length, unsigned char digest[32])
 {
 	struct sha256_ctx ctx;
 	
-	// Valid parameter check
-	if ((input_chunk == 0) || (digest == 0) || (chunk_length == 0)) {
-		printf("Invalid parameter to SHA256 entry\n");
-		return -1;
-	}
-
 	// Compute the SHA256 
 	sha256_init(&ctx);
 	sha256_update(&ctx, input_chunk, chunk_length);
 	sha256_final(&ctx, digest);
-
-	return 0;
 }
 
 /*
@@ -98,7 +91,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 #pragma HLS unroll
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	for ( ; i < 64; ++i)
-#pragma pipeline II=1
+#pragma HLS pipeline II=1
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
 	a = ctx->h[0];
@@ -111,7 +104,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 	h = ctx->h[7];
 
 	for (i = 0; i < 64; ++i) {
-#pragma pipeline II=1
+#pragma HLS pipeline II=1
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;
@@ -153,7 +146,8 @@ void sha256_final(struct sha256_ctx *ctx, unsigned char hash[32])
 			ctx->data[i++] = 0x00;
 		sha256_transform(ctx, ctx->data);
 
-		for (int k = 0; k < 56; k++) {
+		int k;
+		for (k = 0; k < 56; k++) {
 			ctx->data[k] = 0;
 		}
 	}
