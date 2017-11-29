@@ -9,8 +9,9 @@
 
 #define MIN_CODE_LEN    9                   // min # bits in a code word
 #define MAX_CODE_LEN    20                  // max # bits in a code word
-#define MAX_DICT_SIZE   8192
+#define MAX_DICT_SIZE   16383
 #define CHAR_BITS       8
+#define PRIME            16381
 
 #define FIRST_CODE      0                   // value of 1st string code 
 #define MAX_CODES       (1 << MAX_CODE_LEN)

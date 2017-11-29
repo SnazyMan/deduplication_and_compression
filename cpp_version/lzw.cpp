@@ -50,11 +50,11 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
         else {
             // add to dict_root
             if (next_code < MAX_DICT_SIZE) {
-	        dictionary_add(prefix, c, next_code);
+            	dictionary_add(prefix, c, next_code);
             }
             next_code++; // This is incorrect, 
             
-	    // Check to see if dictionary size can be represented in code length
+            // Check to see if dictionary size can be represented in code length
             if ((next_code - 1) >= CURRENT_MAX_CODES(current_code_len)) {
                 current_code_len++;
             }
@@ -92,45 +92,45 @@ void dict_init()
         dic[j].value = -3;
         dic[j].prefix_code = -3;
         dic[j].suffix_char = (unsigned char)(-3);
-	dic[j].valid = 0;
+        dic[j].valid = 0;
     }
 }
 
 int dictionary_lookup(int prefix, unsigned char character)
 {
     int ret = -1;
-    long temp = (prefix + (long)character + 256);
+    long temp = (prefix*31 + (long)character + 256);
 
     //4093 is the biggest prime less than 4096,hash calculation
-    int address = (temp * 29 & 8191);
+    int address = (temp*11 & MAX_DICT_SIZE)^PRIME;
 
     // If the address is invalid no entry, return immediately 
     if (dic[address].valid == 0) {
-	empty = address;
+    	empty = address;
         return -1;
    }
     
     //find this pair in dictionary at the exact address
     if ((dic[address].prefix_code == prefix) && (dic[address].suffix_char == character)) {    
         ret = dic[address].value;
-	return ret;
+        return ret;
     }
-    else{ //don't find & the address isn't empty (rehash)
+    else { //don't find & the address isn't empty (rehash)
         int k = address;
         int rehash = 0;
         while (k < (MAX_DICT_SIZE + address)) { // linear probe
             k++;
             rehash = k % MAX_DICT_SIZE;
-	    if (dic[rehash].valid == 0) {
-		empty = rehash;
-		return -1;
-	    }
+            if (dic[rehash].valid == 0) {
+            	empty = rehash;
+            	return -1;
+            }
             if ((dic[rehash].prefix_code == prefix) && (dic[rehash].suffix_char == character)) {
                 ret = dic[rehash].value;
                 break;
             }
             else {
-		// This case would be for if the dictionary is full    
+            	// This case would be for if the dictionary is full
                 ret = -1;
             }
         }

@@ -9,9 +9,13 @@
 #include "io.h"
 #include "lzw.h"
 #include <unordered_map>
+#ifdef __SDSCC__
+#include <ff.h>
+#include <sds_lib.h>
+#endif
 
 #define MAX_CHUNK_SIZE (8192)
-#define MIN_CHUNK_SIZE (512)
+#define MIN_CHUNK_SIZE (2048)
 
 int LZWChunkNumber = 0;
 std::unordered_map<std::string, int> chunkMap;
@@ -39,10 +43,11 @@ int main()
     /********************          Allocate Memory        **************************/
 #ifdef __SDSCC__	
     unsigned char *Input = (unsigned char*)sds_alloc(INPUT_SIZE);
-    unsigned char *Output = (unsigned char*)sds_alloc(OUTPUT_SIZE);
-    if (Input == NULL || Output == NULL) {
+    //unsigned char *Output = (unsigned char*)sds_alloc(OUTPUT_SIZE);
+    static unsigned char Output[OUTPUT_SIZE];
+    if (Input == NULL) {
         puts("Memory allocation error");
-        return -1;
+      return -1;
     }
     
     int MaxChunkNumber = INPUT_SIZE / MIN_CHUNK_SIZE;
@@ -81,7 +86,10 @@ int main()
     load_data(Input);
 
     /***********************            Compress               *********************/
+#ifdef __SDSCC__
 
+    unsigned long long start=sds_clock_counter();
+#endif
     int ChunkNumber = 0;
     int PreviousLength = 0;
     unsigned char digest[32];
@@ -103,13 +111,13 @@ int main()
         //Stage 3 : Matching stage
         //Matching(digest, historytable, &LZWChunkNumber, &deduplicate, &index);
 
-	std::string digest_str(digest, digest + (sizeof(digest) / sizeof(digest[0])));
-	cppMatching(digest_str, &deduplicate, &index);
+        std::string digest_str(digest, digest + (sizeof(digest) / sizeof(digest[0])));
+        cppMatching(digest_str, &deduplicate, &index);
 	
         //if the chunk come out from matching stage is not a duplicate
         if (deduplicate == 0) {
             lzw(Input + PreviousLength, Output + PreviousCompressedLength,ChunkLength[k], &CompressedLength);
-	    PreviousCompressedLength += CompressedLength;
+            PreviousCompressedLength += CompressedLength;
         }
         else {
             //if it's duplicate
@@ -125,8 +133,8 @@ int main()
             temp[3] = (unsigned char)((index & 0xFF000000) >> 24);
             PreviousCompressedLength += 4;
 
-	    // Reset deduplicate for next chunk
-	    deduplicate = 0;
+            // Reset deduplicate for next chunk
+            deduplicate = 0;
         }
         
         PreviousLength += ChunkLength[k];
@@ -134,14 +142,18 @@ int main()
 
 
      /***********************           Storing Data             *********************/
+#ifdef __SDSCC__
 
+    unsigned long long duration=sds_clock_counter()-start;
     store_data("OUT.bin", Output, PreviousCompressedLength);
+#endif
+    
     //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
     //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
 
 #ifdef __SDSCC__
     sds_free(Input);
-    sds_free(Output);
+    //sds_free(Output);
     sds_free(ChunkLength);
     sds_free(historytable);
 #else
@@ -152,13 +164,18 @@ int main()
 #endif
     
     Input =NULL;
-    Output=NULL;
+    //Output=NULL;
     ChunkLength=NULL;
     historytable=NULL;
     printf("The total number of chunks is %d\n", ChunkNumber);
     printf("The number of LZW chunks is %d\n", LZWChunkNumber);
     printf("the number of duplicate chunks is %d\n",ChunkNumber-LZWChunkNumber);
+#ifdef __SDSCC__
+
+    printf("The duration is %llu \n",duration);
+#endif
     puts("Application completed successfully.");
+
 /*
     int CompressedLength;
     lzw(Input, Output,INPUT_SIZE, &CompressedLength);
