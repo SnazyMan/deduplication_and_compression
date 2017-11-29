@@ -15,7 +15,7 @@
 #endif
 
 #define MAX_CHUNK_SIZE (8192)
-#define MIN_CHUNK_SIZE (2048)
+#define MIN_CHUNK_SIZE (1024)
 
 int LZWChunkNumber = 0;
 std::unordered_map<std::string, int> chunkMap;
