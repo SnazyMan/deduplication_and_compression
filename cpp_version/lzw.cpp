@@ -42,6 +42,8 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
         // read the next byte from the chunk
         c = in_chunk[index++];
 
+        //printf("lzw index = %d\n", index);
+
         // look for code + c in the dict_root
         i = dictionary_lookup(prefix, c);
         if (i != -1) {
@@ -49,7 +51,8 @@ void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT
         }
         else {
             // add to dict_root
-            if (next_code < MAX_DICT_SIZE) {
+            //if (next_code < MAX_DICT_SIZE) {
+            if(empty !=-1){
             	dictionary_add(prefix, c, next_code);
             }
             next_code++; // This is incorrect, 
@@ -116,6 +119,9 @@ int dictionary_lookup(int prefix, unsigned char character)
         return ret;
     }
     else { //don't find & the address isn't empty (rehash)
+        empty =-1;
+        ret=-1;
+        /*
         int k = address;
         int rehash = 0;
         while (k < (MAX_DICT_SIZE + address)) { // linear probe
@@ -134,6 +140,7 @@ int dictionary_lookup(int prefix, unsigned char character)
                 ret = -1;
             }
         }
+         */
     }
 
     return ret;

@@ -9,14 +9,16 @@
 #include "io.h"
 #include "lzw.h"
 #include <unordered_map>
+#include "chunk_digest.h"
 #ifdef __SDSCC__
 #include <ff.h>
 #include <sds_lib.h>
 #endif
 
-#define MAX_CHUNK_SIZE (8192)
-#define MIN_CHUNK_SIZE (2048)
+//#define MAX_CHUNK_SIZE (8192)
+#define MIN_CHUNK_SIZE (1024)
 
+int ChunkNumber = 0;
 int LZWChunkNumber = 0;
 std::unordered_map<std::string, int> chunkMap;
 
@@ -36,6 +38,7 @@ void cppMatching(std::string digest, char *deduplicate, int *index)
 	    *deduplicate = 1;
     }
 }
+
 
 int main()
 {
@@ -90,33 +93,56 @@ int main()
 
     unsigned long long start=sds_clock_counter();
 #endif
-    int ChunkNumber = 0;
     int PreviousLength = 0;
     unsigned char digest[32];
     int index = 0;
-
     char deduplicate = 0;
     int CompressedLength = 0;
     int PreviousCompressedLength = 0;
+    char last = 0;
+    int chunk_acc = 0;
+    int chunk_length = 5120;
 
-    // Stage 1
-    ContentDefinedChunk(Input, ChunkLength, &ChunkNumber, INPUT_SIZE);
+    // Precalculate 2 digests for the chunk;
+    //chunk_digest(Input, &chunk_acc, digest, &last, &chunk_length);
+    chunk_acc += chunk_length;
 
-    // Stage 2-4, sent the chunks one by one to other stages
-    for (int k = 0; k < ChunkNumber; k++) {
+    int k = 0;
+    while (1) {
+    	k++;
+    	//printf("the ieration time is %d\n",k);
 
-        // Stage 2 : SHA stage
-        sha256(Input + PreviousLength, ChunkLength[k], digest);
-        
-        //Stage 3 : Matching stage
-        //Matching(digest, historytable, &LZWChunkNumber, &deduplicate, &index);
 
+    	// Stage 1 & 2 (calculate next chunk)
+    	int temp=chunk_length;
+    	//printf("the temp is %d\n",temp);
+    	//printf("the chunklength is %d\n",chunk_length);
+    	//printf("the chunk_acc is %d\n",chunk_acc);
+    	//printf("the last is %d\n",last);
+
+    	start = sds_clock_counter();
+
+#pragma SDS async(1)
+    	chunk_digest(Input + chunk_acc,&chunk_acc, digest, &last, &chunk_length);
+
+    	unsigned long long stop = sds_clock_counter();
+    	printf("Chunk digest took %llu, chunk length = %d\n", stop - start, chunk_length);
+	
+		// Stage 3: Matching stage
+    	start = sds_clock_counter();
         std::string digest_str(digest, digest + (sizeof(digest) / sizeof(digest[0])));
         cppMatching(digest_str, &deduplicate, &index);
-	
+    	stop = sds_clock_counter();
+        printf("match took %llu, chunk length = %d\n", stop - start, chunk_length);
+
+        // Stage 4: Compression
         //if the chunk come out from matching stage is not a duplicate
         if (deduplicate == 0) {
-            lzw(Input + PreviousLength, Output + PreviousCompressedLength,ChunkLength[k], &CompressedLength);
+        	start = sds_clock_counter();
+            lzw(Input + PreviousLength, Output + PreviousCompressedLength, chunk_length, &CompressedLength);
+        	stop = sds_clock_counter();
+            printf("lzw took %llu, chunk length = %d\n", stop - start, chunk_length);
+
             PreviousCompressedLength += CompressedLength;
         }
         else {
@@ -137,16 +163,52 @@ int main()
             deduplicate = 0;
         }
         
-        PreviousLength += ChunkLength[k];
+        PreviousLength += temp;
+        ChunkNumber++;
+	
+// wait for both stages to finish (sync) before proceeding
+#pragma SDS wait(1)	
+        //chunk_acc += chunk_length;
+	
+        if (chunk_acc > INPUT_SIZE ) {
+        	break;
+        }
     }
 
+    // Finish the pipeline
+    // Stage 3: Matching stage
+    std::string digest_str(digest, digest + (sizeof(digest) / sizeof(digest[0])));
+    cppMatching(digest_str, &deduplicate, &index);
+    
+    // Stage 4: Compression
+    //if the chunk come out from matching stage is not a duplicate
+    if (deduplicate == 0) {
+        lzw(Input + PreviousLength, Output + PreviousCompressedLength, chunk_length, &CompressedLength);
+        PreviousCompressedLength += CompressedLength;
+    }
+    else {
+        //if it's duplicate
+        //add the header to the duplicate chunk
+        unsigned char *temp = Output + PreviousCompressedLength;
+        index <<= 1;
+        
+        index |= 1;
+        
+        temp[0] = (unsigned char) (index & 0x000000FF);
+        temp[1] = (unsigned char)((index & 0x0000FF00) >> 8);
+        temp[2] = (unsigned char)((index & 0x00FF0000) >> 16);
+        temp[3] = (unsigned char)((index & 0xFF000000) >> 24);
+        PreviousCompressedLength += 4;
+	
+        // Reset deduplicate for next chunk
+        deduplicate = 0;
+    }
 
      /***********************           Storing Data             *********************/
 #ifdef __SDSCC__
-
-    unsigned long long duration=sds_clock_counter()-start;
-    store_data("OUT.bin", Output, PreviousCompressedLength);
+    unsigned long long duration = sds_clock_counter() - start;
 #endif
+    store_data("OUT.bin", Output, PreviousCompressedLength);
     
     //store_data("/Users/koutsutomushiba/Desktop/chunktest/compressed.xml", Output, PreviousCompressedLength);
     //store_data("/Users/koutsutomushiba/Desktop/chunktest/uncompressed.xml", Input, INPUT_SIZE);
