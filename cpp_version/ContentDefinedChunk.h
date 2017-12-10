@@ -8,6 +8,6 @@
 
 #define MAX_CHUNK_SIZE 8192 // Bytes
 
-int ContentDefinedChunk(const unsigned char Input[8192],int* chunk_acc, unsigned char Output[8192], char *last);
+int ContentDefinedChunk(const unsigned char Input[MAX_CHUNK_SIZE],int* chunk_acc, unsigned char Output[MAX_CHUNK_SIZE], char *last);
 
 #endif /* ContentDefinedChunk_h */

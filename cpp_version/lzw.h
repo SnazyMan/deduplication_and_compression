@@ -21,16 +21,17 @@
 // node in dictionary list 
 struct dict_node {
     unsigned int value; //position in the list [ONLY NEEDS log2(MAX_CHUNK_SIZE) bits]
-    unsigned char suffix_char; // last char in encoded string 
+    unsigned char suffix_char; // last char in encoded string
     unsigned int prefix_code; // code for remaining chars in string [ONLY NEEDS log2(MAX_CHUNK_SIZE) bits]
     char valid; // a byte (only really need a bit) to signify an empty entry
 };
 
 // write encoded data
-void write_code_word(unsigned char out_stream[MAX_DICT_SIZE], int code, const unsigned char code_len, int last, int *compressed_length);
+void write_code_word(unsigned char out_stream[8192], int code, const unsigned char code_len, int last, int *compressed_length);
+void write_last(unsigned char out_stream[8192], int code, const unsigned char code_len, int last, int *compressed_length);
 
 // LZW encoder
-void lzw(unsigned char in_chunk[MAX_DICT_SIZE], unsigned char out_chunk[MAX_DICT_SIZE], int chunk_length, int *compressed_chunk_lenghth);
+void lzw(unsigned char *in_chunk, unsigned char *out_chunk, int chunk_length, int *compressed_chunk_lenghth);
 
 // Dictionary initialization
 void dict_init();
@@ -39,5 +40,5 @@ void dict_init();
 int dictionary_lookup(int prefix, unsigned char character);
 
 //add to the dictionary
-void dictionary_add(int prefix, unsigned char character, int value);
+void dictionary_add(int prefix, unsigned char character, int argvalue);
 

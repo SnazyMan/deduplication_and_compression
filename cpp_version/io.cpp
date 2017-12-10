@@ -28,7 +28,7 @@ int load_data(unsigned char *data)
 	}
 #else
 	//FILE *file = fopen("/Users/koutsutomushiba/Desktop/chunktest/linux.tar", "r");
-    FILE *file = fopen("./testfilex4.txt", "r");
+    FILE *file = fopen("./testfile.txt", "r");
 
 	if (file == NULL) {
 		printf("Could not open input file.\n");

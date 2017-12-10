@@ -33,10 +33,13 @@ static const uint32_t k[64] = {
  * Note that ARM is little endian, which is somewhat important
  * for this algorithm
  */
+#pragma SDS data mem_attribute(input_chunk:PHYSICAL_CONTIGUOUS)
+//#pragma SDS data zero_copy(input_chunk[0:8192])
 int sha256(unsigned char input_chunk[8192], unsigned int chunk_length, unsigned char digest[32])
 {
 	struct sha256_ctx ctx;
-	
+#pragma HLS ARRAY_PARTITION variable=ctx.data complete dim=0
+
 	// Valid parameter check
 	if ((input_chunk == 0) || (digest == 0) || (chunk_length == 0)) {
 		printf("Invalid parameter to SHA256 entry\n");
@@ -93,12 +96,14 @@ void sha256_update(struct sha256_ctx *ctx, const unsigned char *data, size_t len
 void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 {
 	uint32_t a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
+#pragma HLS array_partition variable=m complete dim=0
+#pragma DATAFLOW
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
 #pragma HLS unroll
 		m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
 	for ( ; i < 64; ++i)
-#pragma pipeline II=1
+#pragma HLS pipeline II=1
 		m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
 	a = ctx->h[0];
@@ -111,7 +116,7 @@ void sha256_transform(struct sha256_ctx *ctx, const unsigned char *data)
 	h = ctx->h[7];
 
 	for (i = 0; i < 64; ++i) {
-#pragma pipeline II=1
+#pragma HLS pipeline II=1
 		t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
 		t2 = EP0(a) + MAJ(a,b,c);
 		h = g;

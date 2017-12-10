@@ -11,6 +11,6 @@
 
 #include <stdio.h>
 void Matching(unsigned char *digest, unsigned char *historytable, int *LZWChunkNumber,
-	      int *deduplicate, int *index);
+	      char *deduplicate, int *index);
 
 #endif /* Matching_h */

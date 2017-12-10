@@ -1,6 +1,6 @@
 CC=gcc
 CXXFLAGS=-I. -std=c++11 -g
-OBJ = app_main.o sha256.o ContentDefinedChunk.o lzw.o io.o  
+OBJ = app_main.o sha256.o ContentDefinedChunk.o lzw.o io.o chunk_digest.o
 
 %.o: %.c
 	$(CXX) -c -g -Wall -Wextra -o $@ $< $(CXXFLAGS)
